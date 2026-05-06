@@ -50,7 +50,6 @@ class SDXLGenerator:
             self.model_id,
             torch_dtype=torch.float16,
             use_safetensors=True,
-            variant="fp16",
         )
 
         if self.enable_cpu_offload:
