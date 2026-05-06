@@ -216,3 +216,12 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# ═══ Text2Audio Project ═══
+output/
+models/
+*.mp3
+*.mp4
+*.wav
+*.srt
+!stories/*.txt

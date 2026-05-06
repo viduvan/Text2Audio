@@ -1,0 +1,33 @@
+# ============================================
+# Text2Audio - Story to YouTube Video Pipeline
+# ============================================
+
+# --- Core ---
+pyyaml>=6.0
+tqdm>=4.65
+Pillow>=10.0
+aiofiles>=23.0
+
+# --- TTS (Text-to-Speech) ---
+edge-tts>=6.1
+
+# --- Image Generation (SDXL Anime) ---
+diffusers>=0.31.0
+transformers>=4.40.0
+accelerate>=0.30.0
+safetensors>=0.4.0
+
+# --- Video Processing ---
+moviepy>=2.0
+imageio[ffmpeg]>=2.34
+
+# --- AI Video Generation (Wan 2.1) ---
+# (uses diffusers, transformers, accelerate above)
+
+# --- Web UI ---
+gradio>=5.0
+
+# --- PyTorch (install separately with CUDA) ---
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu124
+# OR for cu121:
+# pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cu121
