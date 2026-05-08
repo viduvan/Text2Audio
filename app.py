@@ -18,7 +18,7 @@ PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, PROJECT_ROOT)
 
 from src.config import PipelineConfig, ensure_directories
-from src.text_processor import split_text_to_scenes, Scene
+from src.text_processor import split_text_to_scenes, Scene, get_style_choices, get_style_prefix, get_style_negative, IMAGE_STYLES
 from src.tts_engine import create_tts_engine
 from src.pipeline import StoryPipeline
 
@@ -185,23 +185,25 @@ def load_story_file(file):
         return f.read()
 
 
-def preview_scenes(story_text, min_chars, max_chars):
+def preview_scenes(story_text, min_chars, max_chars, image_style):
     """Preview how the story will be split into scenes."""
     if not story_text.strip():
         return "⚠️ Vui lòng nhập nội dung truyện!", ""
 
+    style_prefix = get_style_prefix(image_style) if image_style else ""
     scenes = split_text_to_scenes(
         text=story_text,
         min_chars=int(min_chars),
         max_chars=int(max_chars),
+        style_prefix=style_prefix,
     )
 
-    preview = f"📊 **Tổng cộng: {len(scenes)} scene**\n\n"
+    preview = f"📊 **Tổng cộng: {len(scenes)} scene** | Style: **{IMAGE_STYLES.get(image_style, {}).get('label', image_style)}**\n\n"
     for s in scenes:
         text_preview = s.text[:150] + "..." if len(s.text) > 150 else s.text
         preview += f"---\n**Scene {s.scene_id + 1}** ({len(s.text)} ký tự)\n\n"
         preview += f"📝 {text_preview}\n\n"
-        preview += f"🎨 *Prompt:* {s.image_prompt[:100]}...\n\n"
+        preview += f"🎨 *Prompt:* {s.image_prompt[:120]}...\n\n"
 
     return preview, f"✅ {len(scenes)} scenes"
 
@@ -231,7 +233,7 @@ def run_tts_only(text, voice, rate):
 
 def run_full_pipeline(
     story_text, project_name, voice, rate,
-    video_mode, progress=gr.Progress(track_tqdm=True)
+    video_mode, image_style, progress=gr.Progress(track_tqdm=True)
 ):
     """Run the full story-to-video pipeline."""
     if not story_text.strip():
@@ -260,6 +262,14 @@ def run_full_pipeline(
         config.tts.voice = voice
         config.tts.rate = rate
         config.video.default_mode = video_mode
+
+        # Apply image style
+        style_prefix = get_style_prefix(image_style) if image_style else ""
+        style_negative = get_style_negative(image_style) if image_style else ""
+        config.image.style_prefix = style_prefix
+        if style_negative:
+            config.image.negative_prompt += f", {style_negative}"
+
         ensure_directories(config.__dict__)
 
         pipe = StoryPipeline(config)
@@ -394,6 +404,14 @@ def create_ui():
                                 scale=2,
                             )
 
+                        with gr.Row():
+                            image_style_select = gr.Dropdown(
+                                label="🎨 Phong cách hình ảnh",
+                                choices=get_style_choices(),
+                                value="anime",
+                                scale=4,
+                            )
+
                         # Preview scenes
                         with gr.Accordion("👀 Xem trước phân đoạn", open=False):
                             with gr.Row():
@@ -405,7 +423,7 @@ def create_ui():
 
                             preview_btn.click(
                                 fn=preview_scenes,
-                                inputs=[story_input, min_chars, max_chars],
+                                inputs=[story_input, min_chars, max_chars, image_style_select],
                                 outputs=[scene_preview, scene_count],
                             )
 
@@ -446,7 +464,7 @@ def create_ui():
                 # Connect run button
                 run_btn.click(
                     fn=run_full_pipeline,
-                    inputs=[story_input, project_name, voice_select, rate_select, video_mode_select],
+                    inputs=[story_input, project_name, voice_select, rate_select, video_mode_select, image_style_select],
                     outputs=[log_output, audio_preview, video_output, download_btn, gallery],
                 )
 
