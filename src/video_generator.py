@@ -1,23 +1,11 @@
-"""Video Generator - Create video clips from images/prompts."""
+"""Video Generator - Create video clips using Ken Burns effect on images."""
 import os
-import gc
 import logging
 import random
 import numpy as np
 from typing import Optional
 
 logger = logging.getLogger(__name__)
-
-
-def _cleanup_gpu():
-    """Free GPU memory."""
-    gc.collect()
-    try:
-        import torch
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
-    except ImportError:
-        pass
 
 
 class KenBurnsGenerator:
@@ -137,127 +125,6 @@ class KenBurnsGenerator:
         return output_path
 
 
-class Wan21Generator:
-    """Generate AI video using Wan 2.1 T2V 1.3B model."""
-
-    def __init__(
-        self,
-        model_id: str = "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-        enable_cpu_offload: bool = True,
-        enable_vae_tiling: bool = True,
-    ):
-        self.model_id = model_id
-        self.enable_cpu_offload = enable_cpu_offload
-        self.enable_vae_tiling = enable_vae_tiling
-        self.pipe = None
-
-    def load_model(self):
-        """Load the Wan 2.1 model into GPU."""
-        if self.pipe is not None:
-            return
-
-        import torch
-        from diffusers import WanPipeline
-
-        logger.info(f"Loading Wan 2.1 model: {self.model_id}")
-
-        self.pipe = WanPipeline.from_pretrained(
-            self.model_id,
-            torch_dtype=torch.bfloat16,
-        )
-
-        if self.enable_cpu_offload:
-            self.pipe.enable_model_cpu_offload()
-
-        if self.enable_vae_tiling:
-            try:
-                self.pipe.vae.enable_tiling()
-            except Exception:
-                pass
-
-        logger.info("Wan 2.1 model loaded successfully")
-
-    def unload_model(self):
-        """Unload model from GPU."""
-        if self.pipe is not None:
-            del self.pipe
-            self.pipe = None
-            _cleanup_gpu()
-            logger.info("Wan 2.1 model unloaded")
-
-    def generate(
-        self,
-        prompt: str,
-        output_path: str,
-        width: int = 832,
-        height: int = 480,
-        num_frames: int = 81,
-        num_inference_steps: int = 30,
-        guidance_scale: float = 6.0,
-        fps: int = 16,
-        seed: int = -1,
-    ) -> str:
-        """Generate a video clip from text prompt.
-
-        Args:
-            prompt: English text prompt
-            output_path: Path to save the video
-            width: Video width (recommend 832)
-            height: Video height (recommend 480)
-            num_frames: Number of frames (81 = ~5 seconds at 16fps)
-            num_inference_steps: Denoising steps
-            guidance_scale: Prompt adherence
-            fps: Frames per second
-            seed: Random seed (-1 for random)
-
-        Returns:
-            Path to the generated video
-        """
-        import torch
-        from diffusers.utils import export_to_video
-
-        self.load_model()
-
-        if seed == -1:
-            seed = random.randint(0, 2**32 - 1)
-
-        generator = torch.Generator(device="cpu").manual_seed(seed)
-
-        logger.info(f"Generating video (seed={seed}): {prompt[:80]}...")
-
-        video = self.pipe(
-            prompt=prompt,
-            height=height,
-            width=width,
-            num_frames=num_frames,
-            guidance_scale=guidance_scale,
-            num_inference_steps=num_inference_steps,
-            generator=generator,
-        ).frames[0]
-
-        os.makedirs(os.path.dirname(output_path) if os.path.dirname(output_path) else ".", exist_ok=True)
-        export_to_video(video, output_path, fps=fps)
-
-        logger.info(f"AI video saved ({num_frames} frames): {output_path}")
-        return output_path
-
-
-def create_video_generator(mode: str = "ken_burns", **kwargs):
-    """Factory function to create a video generator.
-
-    Args:
-        mode: "ken_burns" or "wan21"
-    """
-    if mode == "ken_burns":
-        return KenBurnsGenerator(
-            fps=kwargs.get("fps", 24),
-            zoom_ratio=kwargs.get("zoom_ratio", 1.2),
-        )
-    elif mode == "wan21":
-        return Wan21Generator(
-            model_id=kwargs.get("model_id", "Wan-AI/Wan2.1-T2V-1.3B-Diffusers"),
-            enable_cpu_offload=kwargs.get("enable_cpu_offload", True),
-            enable_vae_tiling=kwargs.get("enable_vae_tiling", True),
-        )
-    else:
-        raise ValueError(f"Unknown video mode: {mode}. Supported: ken_burns, wan21")
+def create_video_generator(fps: int = 24, zoom_ratio: float = 1.2, **kwargs) -> KenBurnsGenerator:
+    """Factory function to create a Ken Burns video generator."""
+    return KenBurnsGenerator(fps=fps, zoom_ratio=zoom_ratio)
