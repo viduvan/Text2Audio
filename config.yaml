@@ -37,21 +37,10 @@ image:
   enable_cpu_offload: true
 
 video:
-  default_mode: "ken_burns"
   ken_burns:
     effect: "random"
     zoom_ratio: 1.2
     fps: 24
-  wan21:
-    model_id: "./models/Wan2.1-T2V-1.3B-Diffusers"
-    width: 832
-    height: 480
-    num_frames: 81
-    num_inference_steps: 30
-    guidance_scale: 6.0
-    fps: 16
-    enable_cpu_offload: true
-    enable_vae_tiling: true
 
 merger:
   output_resolution:
