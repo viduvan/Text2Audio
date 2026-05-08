@@ -80,23 +80,14 @@ class ImageConfig:
 
 @dataclass
 class VideoConfig:
-    default_mode: str = "ken_burns"
     ken_burns: dict = field(default_factory=lambda: {
         "effect": "random", "zoom_ratio": 1.2, "fps": 24
-    })
-    wan21: dict = field(default_factory=lambda: {
-        "model_id": "Wan-AI/Wan2.1-T2V-1.3B-Diffusers",
-        "width": 832, "height": 480, "num_frames": 81,
-        "num_inference_steps": 30, "guidance_scale": 6.0, "fps": 16,
-        "enable_cpu_offload": True, "enable_vae_tiling": True,
     })
 
     @classmethod
     def from_dict(cls, d: dict) -> "VideoConfig":
         return cls(
-            default_mode=d.get("default_mode", "ken_burns"),
             ken_burns=d.get("ken_burns", {}),
-            wan21=d.get("wan21", {}),
         )
 
 
