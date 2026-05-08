@@ -19,7 +19,7 @@ sys.path.insert(0, PROJECT_ROOT)
 
 from src.config import PipelineConfig, ensure_directories
 from src.text_processor import split_text_to_scenes, Scene, get_style_choices, get_style_prefix, get_style_negative, IMAGE_STYLES
-from src.tts_engine import create_tts_engine
+from src.tts_engine import create_tts_engine, list_available_engines
 from src.pipeline import StoryPipeline
 
 
@@ -208,31 +208,41 @@ def preview_scenes(story_text, min_chars, max_chars, image_style):
     return preview, f"✅ {len(scenes)} scenes"
 
 
-def run_tts_only(text, voice, rate):
+def run_tts_only(text, engine_type, voice_or_id, rate, emotion):
     """Run TTS on a single text input."""
     if not text.strip():
         return None, "⚠️ Vui lòng nhập text!"
 
-    engine = create_tts_engine(
-        engine_type="edge-tts",
-        voice=voice,
-        rate=rate,
-    )
-
     output_dir = os.path.join(PROJECT_ROOT, "output", "tts_preview")
     os.makedirs(output_dir, exist_ok=True)
-    output_path = os.path.join(output_dir, f"preview_{int(time.time())}.mp3")
 
     try:
+        if engine_type == "vieneu":
+            engine = create_tts_engine(
+                engine_type="vieneu",
+                emotion=emotion or "storytelling",
+                voice_id=voice_or_id if voice_or_id else None,
+            )
+            ext = "wav"
+        else:
+            engine = create_tts_engine(
+                engine_type="edge-tts",
+                voice=voice_or_id or "vi-VN-HoaiMyNeural",
+                rate=rate or "+0%",
+            )
+            ext = "mp3"
+
+        output_path = os.path.join(output_dir, f"preview_{int(time.time())}.{ext}")
         path, _ = engine.generate(text, output_path)
         duration = engine.get_audio_duration(path)
-        return path, f"✅ Audio tạo thành công! ({duration:.1f}s)"
+        return path, f"✅ Audio tạo thành công! ({duration:.1f}s) [{engine_type}]"
     except Exception as e:
+        logger.exception("TTS error")
         return None, f"❌ Lỗi: {str(e)}"
 
 
 def run_full_pipeline(
-    story_text, project_name, voice, rate,
+    story_text, project_name, tts_engine, voice_or_id, rate, emotion,
     video_mode, image_style, progress=gr.Progress(track_tqdm=True)
 ):
     """Run the full story-to-video pipeline."""
@@ -259,8 +269,13 @@ def run_full_pipeline(
     try:
         # Initialize pipeline
         config = PipelineConfig.from_yaml(CONFIG_PATH)
-        config.tts.voice = voice
-        config.tts.rate = rate
+        config.tts.engine = tts_engine
+        if tts_engine == "vieneu":
+            config.tts.vieneu_emotion = emotion or "storytelling"
+            config.tts.vieneu_voice_id = voice_or_id if voice_or_id else "Ly"
+        else:
+            config.tts.voice = voice_or_id or "vi-VN-HoaiMyNeural"
+            config.tts.rate = rate or "+0%"
         config.video.default_mode = video_mode
 
         # Apply image style
@@ -371,19 +386,44 @@ def create_ui():
                                 value="my_story",
                                 scale=2,
                             )
-                            voice_select = gr.Dropdown(
-                                label="Giọng đọc",
+                            tts_engine_select = gr.Dropdown(
+                                label="🔊 Engine TTS",
                                 choices=[
-                                    ("👩 Nữ (HoaiMy)", "vi-VN-HoaiMyNeural"),
-                                    ("👨 Nam (NamMinh)", "vi-VN-NamMinhNeural"),
+                                    ("🇻🇳 VieNeu-TTS (Local, 7+ giọng)", "vieneu"),
+                                    ("☁️ Edge-TTS (Cloud, 2 giọng)", "edge-tts"),
                                 ],
-                                value="vi-VN-HoaiMyNeural",
+                                value="vieneu",
+                                scale=2,
+                            )
+
+                        with gr.Row():
+                            voice_select = gr.Dropdown(
+                                label="🎙️ Giọng đọc",
+                                choices=[
+                                    ("🎤 Trúc Ly (nữ Bắc)", "Ly"),
+                                    ("🎤 Bích Ngọc (nữ Bắc)", "Ngoc"),
+                                    ("🎤 Thục Đoan (nữ Nam)", "Doan"),
+                                    ("🎤 Thanh Bình (nam Bắc)", "Binh"),
+                                    ("🎤 Phạm Tuyên (nam Bắc)", "Tuyen"),
+                                    ("🎤 Xuân Vĩnh (nam Nam)", "Vinh"),
+                                    ("🎤 Thái Sơn (nam Nam)", "Sơn"),
+                                ],
+                                value="Ly",
+                                scale=2,
+                            )
+                            emotion_select = gr.Dropdown(
+                                label="🎭 Phong cách đọc",
+                                choices=[
+                                    ("📖 Kể chuyện (Storytelling)", "storytelling"),
+                                    ("💬 Tự nhiên (Natural)", "natural"),
+                                ],
+                                value="storytelling",
                                 scale=2,
                             )
 
                         with gr.Row():
                             rate_select = gr.Dropdown(
-                                label="Tốc độ đọc",
+                                label="⏩ Tốc độ (Edge-TTS)",
                                 choices=[
                                     ("Rất chậm (-30%)", "-30%"),
                                     ("Chậm (-15%)", "-15%"),
@@ -395,7 +435,7 @@ def create_ui():
                                 scale=2,
                             )
                             video_mode_select = gr.Dropdown(
-                                label="Chế độ video",
+                                label="🎬 Chế độ video",
                                 choices=[
                                     ("🖼️ Ken Burns (ảnh + zoom/pan)", "ken_burns"),
                                     ("🤖 Wan 2.1 AI Video", "wan21"),
@@ -411,6 +451,36 @@ def create_ui():
                                 value="anime",
                                 scale=4,
                             )
+
+                        # Dynamic UI: switch voice choices based on engine
+                        def update_voice_choices(engine):
+                            if engine == "vieneu":
+                                return gr.update(
+                                    choices=[
+                                        ("🎤 Trúc Ly (nữ Bắc)", "Ly"),
+                                        ("🎤 Bích Ngọc (nữ Bắc)", "Ngoc"),
+                                        ("🎤 Thục Đoan (nữ Nam)", "Doan"),
+                                        ("🎤 Thanh Bình (nam Bắc)", "Binh"),
+                                        ("🎤 Phạm Tuyên (nam Bắc)", "Tuyen"),
+                                        ("🎤 Xuân Vĩnh (nam Nam)", "Vinh"),
+                                        ("🎤 Thái Sơn (nam Nam)", "Sơn"),
+                                    ],
+                                    value="Ly",
+                                )
+                            else:
+                                return gr.update(
+                                    choices=[
+                                        ("👩 Nữ (HoaiMy)", "vi-VN-HoaiMyNeural"),
+                                        ("👨 Nam (NamMinh)", "vi-VN-NamMinhNeural"),
+                                    ],
+                                    value="vi-VN-HoaiMyNeural",
+                                )
+
+                        tts_engine_select.change(
+                            fn=update_voice_choices,
+                            inputs=[tts_engine_select],
+                            outputs=[voice_select],
+                        )
 
                         # Preview scenes
                         with gr.Accordion("👀 Xem trước phân đoạn", open=False):
@@ -464,7 +534,11 @@ def create_ui():
                 # Connect run button
                 run_btn.click(
                     fn=run_full_pipeline,
-                    inputs=[story_input, project_name, voice_select, rate_select, video_mode_select, image_style_select],
+                    inputs=[
+                        story_input, project_name, tts_engine_select,
+                        voice_select, rate_select, emotion_select,
+                        video_mode_select, image_style_select,
+                    ],
                     outputs=[log_output, audio_preview, video_output, download_btn, gallery],
                 )
 
@@ -473,7 +547,7 @@ def create_ui():
             # ═══════════════════════════════
             with gr.Tab("🔊 TTS", id="tts"):
                 gr.Markdown("### 🔊 Text-to-Speech (Chuyển văn bản → giọng nói)")
-                gr.Markdown("Tạo audio từ text tiếng Việt nhanh chóng")
+                gr.Markdown("Tạo audio từ text tiếng Việt — hỗ trợ VieNeu-TTS (7+ giọng) và Edge-TTS")
 
                 with gr.Row():
                     with gr.Column(scale=3):
@@ -483,16 +557,38 @@ def create_ui():
                             lines=6,
                         )
                         with gr.Row():
-                            tts_voice = gr.Dropdown(
-                                label="Giọng đọc",
+                            tts_engine = gr.Dropdown(
+                                label="🔊 Engine",
                                 choices=[
-                                    ("👩 Nữ (HoaiMy)", "vi-VN-HoaiMyNeural"),
-                                    ("👨 Nam (NamMinh)", "vi-VN-NamMinhNeural"),
+                                    ("🇻🇳 VieNeu-TTS", "vieneu"),
+                                    ("☁️ Edge-TTS", "edge-tts"),
                                 ],
-                                value="vi-VN-HoaiMyNeural",
+                                value="vieneu",
+                            )
+                            tts_voice = gr.Dropdown(
+                                label="🎙️ Giọng đọc",
+                                choices=[
+                                    ("🎤 Trúc Ly (nữ Bắc)", "Ly"),
+                                    ("🎤 Bích Ngọc (nữ Bắc)", "Ngoc"),
+                                    ("🎤 Thục Đoan (nữ Nam)", "Doan"),
+                                    ("🎤 Thanh Bình (nam Bắc)", "Binh"),
+                                    ("🎤 Phạm Tuyên (nam Bắc)", "Tuyen"),
+                                    ("🎤 Xuân Vĩnh (nam Nam)", "Vinh"),
+                                    ("🎤 Thái Sơn (nam Nam)", "Sơn"),
+                                ],
+                                value="Ly",
+                            )
+                        with gr.Row():
+                            tts_emotion = gr.Dropdown(
+                                label="🎭 Phong cách",
+                                choices=[
+                                    ("📖 Kể chuyện", "storytelling"),
+                                    ("💬 Tự nhiên", "natural"),
+                                ],
+                                value="storytelling",
                             )
                             tts_rate = gr.Dropdown(
-                                label="Tốc độ",
+                                label="⏩ Tốc độ (Edge-TTS)",
                                 choices=[
                                     ("Chậm (-15%)", "-15%"),
                                     ("Bình thường", "+0%"),
@@ -500,6 +596,37 @@ def create_ui():
                                 ],
                                 value="+0%",
                             )
+
+                        # Dynamic voice switching for TTS tab
+                        def update_tts_voice(engine):
+                            if engine == "vieneu":
+                                return gr.update(
+                                    choices=[
+                                        ("🎤 Trúc Ly (nữ Bắc)", "Ly"),
+                                        ("🎤 Bích Ngọc (nữ Bắc)", "Ngoc"),
+                                        ("🎤 Thục Đoan (nữ Nam)", "Doan"),
+                                        ("🎤 Thanh Bình (nam Bắc)", "Binh"),
+                                        ("🎤 Phạm Tuyên (nam Bắc)", "Tuyen"),
+                                        ("🎤 Xuân Vĩnh (nam Nam)", "Vinh"),
+                                        ("🎤 Thái Sơn (nam Nam)", "Sơn"),
+                                    ],
+                                    value="Ly",
+                                )
+                            else:
+                                return gr.update(
+                                    choices=[
+                                        ("👩 Nữ (HoaiMy)", "vi-VN-HoaiMyNeural"),
+                                        ("👨 Nam (NamMinh)", "vi-VN-NamMinhNeural"),
+                                    ],
+                                    value="vi-VN-HoaiMyNeural",
+                                )
+
+                        tts_engine.change(
+                            fn=update_tts_voice,
+                            inputs=[tts_engine],
+                            outputs=[tts_voice],
+                        )
+
                         tts_btn = gr.Button(
                             "🎵 Tạo Audio",
                             variant="primary",
@@ -512,7 +639,7 @@ def create_ui():
 
                 tts_btn.click(
                     fn=run_tts_only,
-                    inputs=[tts_text, tts_voice, tts_rate],
+                    inputs=[tts_text, tts_engine, tts_voice, tts_rate, tts_emotion],
                     outputs=[tts_audio_out, tts_status],
                 )
 
