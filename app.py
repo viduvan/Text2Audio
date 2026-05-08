@@ -222,6 +222,7 @@ def run_tts_only(text, engine_type, voice_or_id, rate, emotion):
                 engine_type="vieneu",
                 emotion=emotion or "storytelling",
                 voice_id=voice_or_id if voice_or_id else None,
+                rate=rate or "+0%",
             )
             ext = "wav"
         else:
@@ -243,7 +244,7 @@ def run_tts_only(text, engine_type, voice_or_id, rate, emotion):
 
 def run_full_pipeline(
     story_text, project_name, tts_engine, voice_or_id, rate, emotion,
-    video_mode, image_style, progress=gr.Progress(track_tqdm=True)
+    image_style, progress=gr.Progress(track_tqdm=True)
 ):
     """Run the full story-to-video pipeline."""
     if not story_text.strip():
@@ -270,13 +271,12 @@ def run_full_pipeline(
         # Initialize pipeline
         config = PipelineConfig.from_yaml(CONFIG_PATH)
         config.tts.engine = tts_engine
+        config.tts.rate = rate or "+0%"
         if tts_engine == "vieneu":
             config.tts.vieneu_emotion = emotion or "storytelling"
             config.tts.vieneu_voice_id = voice_or_id if voice_or_id else "Ly"
         else:
             config.tts.voice = voice_or_id or "vi-VN-HoaiMyNeural"
-            config.tts.rate = rate or "+0%"
-        config.video.default_mode = video_mode
 
         # Apply image style
         style_prefix = get_style_prefix(image_style) if image_style else ""
@@ -309,9 +309,9 @@ def run_full_pipeline(
         images = [s.image_path for s in scenes if s.image_path and os.path.exists(s.image_path)]
         yield log(f"✅ Bước 3 hoàn tất: {len(images)} images"), first_audio, None, None, images
 
-        # Step 4: Generate videos
-        yield log(f"🎬 Bước 4: Đang tạo video ({video_mode})..."), first_audio, None, None, images
-        scenes = pipe.step4_generate_videos(scenes, project_dir, video_mode, progress_cb)
+        # Step 4: Generate videos (Ken Burns)
+        yield log("🎬 Bước 4: Đang tạo video (Ken Burns)..."), first_audio, None, None, images
+        scenes = pipe.step4_generate_videos(scenes, project_dir, progress_cb)
         yield log("✅ Bước 4 hoàn tất"), first_audio, None, None, images
 
         # Step 5: Merge final
@@ -423,7 +423,7 @@ def create_ui():
 
                         with gr.Row():
                             rate_select = gr.Dropdown(
-                                label="⏩ Tốc độ (Edge-TTS)",
+                                label="⏩ Tốc độ",
                                 choices=[
                                     ("Rất chậm (-30%)", "-30%"),
                                     ("Chậm (-15%)", "-15%"),
@@ -432,15 +432,6 @@ def create_ui():
                                     ("Rất nhanh (+30%)", "+30%"),
                                 ],
                                 value="+0%",
-                                scale=2,
-                            )
-                            video_mode_select = gr.Dropdown(
-                                label="🎬 Chế độ video",
-                                choices=[
-                                    ("🖼️ Ken Burns (ảnh + zoom/pan)", "ken_burns"),
-                                    ("🤖 Wan 2.1 AI Video", "wan21"),
-                                ],
-                                value="ken_burns",
                                 scale=2,
                             )
 
@@ -537,7 +528,7 @@ def create_ui():
                     inputs=[
                         story_input, project_name, tts_engine_select,
                         voice_select, rate_select, emotion_select,
-                        video_mode_select, image_style_select,
+                        image_style_select,
                     ],
                     outputs=[log_output, audio_preview, video_output, download_btn, gallery],
                 )
@@ -588,7 +579,7 @@ def create_ui():
                                 value="storytelling",
                             )
                             tts_rate = gr.Dropdown(
-                                label="⏩ Tốc độ (Edge-TTS)",
+                                label="⏩ Tốc độ",
                                 choices=[
                                     ("Chậm (-15%)", "-15%"),
                                     ("Bình thường", "+0%"),
