@@ -58,6 +58,88 @@ SCENE_KEYWORDS = {
     "kiếm": "sword, weapon, warrior",
 }
 
+# ─── Image Style Presets ───
+# Each style has: prefix (main style tags), quality (boosters), negative_extra (extra negatives)
+IMAGE_STYLES = {
+    "anime": {
+        "label": "🎌 Anime",
+        "prefix": "anime style, detailed anime illustration, vibrant colors, masterpiece, best quality",
+        "quality": "cinematic lighting, highly detailed, 4k",
+        "negative_extra": "",
+    },
+    "anime_dark": {
+        "label": "🌙 Anime Dark / Gothic",
+        "prefix": "dark anime style, gothic anime, dramatic shadows, detailed illustration, masterpiece, best quality",
+        "quality": "dark atmosphere, moody lighting, highly detailed, 4k",
+        "negative_extra": "bright, cheerful, pastel colors",
+    },
+    "anime_chibi": {
+        "label": "🧸 Anime Chibi",
+        "prefix": "chibi anime style, cute chibi character, kawaii, super deformed, colorful, masterpiece, best quality",
+        "quality": "soft lighting, pastel colors, highly detailed, 4k",
+        "negative_extra": "realistic, dark, scary",
+    },
+    "anime_watercolor": {
+        "label": "🎨 Anime Watercolor",
+        "prefix": "watercolor anime style, soft watercolor painting, delicate brush strokes, pastel tones, masterpiece, best quality",
+        "quality": "dreamy atmosphere, soft lighting, artistic, highly detailed, 4k",
+        "negative_extra": "sharp lines, digital art look, photorealistic",
+    },
+    "fantasy_art": {
+        "label": "⚔️ Fantasy Art",
+        "prefix": "fantasy art style, epic fantasy illustration, magical, ethereal glow, masterpiece, best quality",
+        "quality": "dramatic lighting, volumetric light, highly detailed, 4k",
+        "negative_extra": "",
+    },
+    "realistic_anime": {
+        "label": "📸 Semi-Realistic Anime",
+        "prefix": "semi-realistic anime style, detailed realistic anime, photorealistic shading, masterpiece, best quality",
+        "quality": "ray tracing, cinematic lighting, highly detailed, 4k, 8k",
+        "negative_extra": "flat colors, simple, cartoonish",
+    },
+    "ink_wash": {
+        "label": "🖌️ Ink Wash / Thủy Mặc",
+        "prefix": "chinese ink wash painting style, sumi-e, traditional asian art, monochrome with subtle color, masterpiece, best quality",
+        "quality": "atmospheric, misty, elegant composition, highly detailed",
+        "negative_extra": "colorful, modern, digital art look",
+    },
+    "pixel_art": {
+        "label": "👾 Pixel Art",
+        "prefix": "pixel art style, retro game art, 16-bit style, colorful pixels, masterpiece, best quality",
+        "quality": "clean pixels, vibrant palette, detailed sprite art",
+        "negative_extra": "blurry, smooth, photorealistic",
+    },
+    "oil_painting": {
+        "label": "🖼️ Oil Painting",
+        "prefix": "oil painting style, classical oil painting, rich texture, thick brush strokes, masterpiece, best quality",
+        "quality": "dramatic chiaroscuro, golden hour lighting, museum quality, highly detailed",
+        "negative_extra": "flat, digital, anime",
+    },
+    "comic_book": {
+        "label": "💥 Comic / Manga",
+        "prefix": "manga style, comic book art, bold lines, high contrast, dynamic composition, masterpiece, best quality",
+        "quality": "screentone, dramatic angles, highly detailed, 4k",
+        "negative_extra": "photorealistic, soft, watercolor",
+    },
+}
+
+
+def get_style_choices() -> List[tuple]:
+    """Get style choices for UI dropdown."""
+    return [(v["label"], k) for k, v in IMAGE_STYLES.items()]
+
+
+def get_style_prefix(style_key: str) -> str:
+    """Get the full style prefix for a given style key."""
+    style = IMAGE_STYLES.get(style_key, IMAGE_STYLES["anime"])
+    return style["prefix"]
+
+
+def get_style_negative(style_key: str) -> str:
+    """Get extra negative prompt for a given style key."""
+    style = IMAGE_STYLES.get(style_key, IMAGE_STYLES["anime"])
+    return style.get("negative_extra", "")
+
 
 def extract_scene_keywords(text: str) -> List[str]:
     """Extract English keywords from Vietnamese text for image prompts."""
@@ -74,19 +156,23 @@ def generate_image_prompt(text: str, scene_id: int, style_prefix: str = "") -> s
     keywords = extract_scene_keywords(text)
 
     if not keywords:
-        # Default scene description based on scene type
         base = "a beautiful scene, landscape, atmospheric lighting"
     else:
         base = ", ".join(keywords)
 
-    # Add style prefix
+    # Use provided style_prefix or fall back to default anime
     if style_prefix:
         prompt = f"{style_prefix}, {base}"
     else:
-        prompt = f"anime style, detailed anime illustration, {base}"
+        prompt = f"{IMAGE_STYLES['anime']['prefix']}, {base}"
 
-    # Add quality boosters
-    prompt += ", cinematic lighting, highly detailed, 4k"
+    # Add quality boosters from style if matching, otherwise generic
+    style_match = next((s for s in IMAGE_STYLES.values() if s["prefix"] == style_prefix), None)
+    if style_match:
+        prompt += f", {style_match['quality']}"
+    else:
+        prompt += ", cinematic lighting, highly detailed, 4k"
+
     return prompt
 
 
