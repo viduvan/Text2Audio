@@ -40,6 +40,7 @@ class StoryPipeline:
                     voice_id=cfg.vieneu_voice_id,
                     ref_audio=cfg.vieneu_ref_audio,
                     ref_text=cfg.vieneu_ref_text,
+                    rate=cfg.rate,
                 )
             else:
                 self.tts_engine = create_tts_engine(
@@ -58,19 +59,12 @@ class StoryPipeline:
                 enable_cpu_offload=cfg.enable_cpu_offload,
             )
 
-    def _init_video(self, mode: Optional[str] = None):
-        mode = mode or self.config.video.default_mode
-        if mode == "ken_burns":
+    def _init_video(self):
+        if self.video_generator is None:
             kb_cfg = self.config.video.ken_burns
             self.video_generator = create_video_generator(
-                mode="ken_burns",
                 fps=kb_cfg.get("fps", 24),
                 zoom_ratio=kb_cfg.get("zoom_ratio", 1.2),
-            )
-        elif mode == "wan21":
-            wan_cfg = self.config.video.wan21
-            self.video_generator = create_video_generator(
-                mode="wan21", **wan_cfg,
             )
 
     def _init_merger(self):
@@ -220,12 +214,10 @@ class StoryPipeline:
         self,
         scenes: List[Scene],
         project_dir: str,
-        video_mode: Optional[str] = None,
         progress: Optional[ProgressCallback] = None,
     ) -> List[Scene]:
-        """Step 4: Generate video clips for each scene."""
-        mode = video_mode or self.config.video.default_mode
-        self._init_video(mode)
+        """Step 4: Generate Ken Burns video clips for each scene."""
+        self._init_video()
         video_dir = os.path.join(project_dir, "videos")
         os.makedirs(video_dir, exist_ok=True)
 
@@ -234,39 +226,26 @@ class StoryPipeline:
 
         for i, scene in enumerate(scenes):
             if progress:
-                progress(i, total, f"🎬 Tạo video scene {i+1}/{total} ({mode})...")
+                progress(i, total, f"🎬 Tạo video scene {i+1}/{total}...")
 
             if scene.video_path and os.path.exists(scene.video_path):
                 logger.info(f"Skipping video scene {i} (exists)")
                 continue
 
+            if not scene.image_path:
+                logger.warning(f"Scene {i}: No image, skipping video generation")
+                continue
+
             output_path = os.path.join(video_dir, f"scene_{scene.scene_id:04d}.mp4")
 
             try:
-                if mode == "ken_burns" and scene.image_path:
-                    path = self.video_generator.generate(
-                        image_path=scene.image_path,
-                        output_path=output_path,
-                        duration=max(scene.audio_duration, 3.0),
-                        output_width=cfg.output_width,
-                        output_height=cfg.output_height,
-                    )
-                elif mode == "wan21":
-                    wan_cfg = self.config.video.wan21
-                    path = self.video_generator.generate(
-                        prompt=scene.video_prompt,
-                        output_path=output_path,
-                        width=wan_cfg.get("width", 832),
-                        height=wan_cfg.get("height", 480),
-                        num_frames=wan_cfg.get("num_frames", 81),
-                        num_inference_steps=wan_cfg.get("num_inference_steps", 30),
-                        guidance_scale=wan_cfg.get("guidance_scale", 6.0),
-                        fps=wan_cfg.get("fps", 16),
-                    )
-                else:
-                    logger.warning(f"Scene {i}: No image, skipping video generation")
-                    continue
-
+                path = self.video_generator.generate(
+                    image_path=scene.image_path,
+                    output_path=output_path,
+                    duration=max(scene.audio_duration, 3.0),
+                    output_width=cfg.output_width,
+                    output_height=cfg.output_height,
+                )
                 scene.video_path = path
                 scene.status = "done"
 
@@ -274,10 +253,6 @@ class StoryPipeline:
                 logger.error(f"Video generation error scene {i}: {e}")
                 scene.status = "error"
                 continue
-
-        # Unload video model if it's Wan 2.1
-        if mode == "wan21" and hasattr(self.video_generator, 'unload_model'):
-            self.video_generator.unload_model()
 
         save_scenes(scenes, os.path.join(project_dir, "scenes.json"))
 
@@ -328,7 +303,6 @@ class StoryPipeline:
         self,
         story_text: str,
         project_name: str = "my_story",
-        video_mode: Optional[str] = None,
         progress: Optional[ProgressCallback] = None,
     ) -> str:
         """Run the full pipeline from text to final video.
@@ -336,7 +310,6 @@ class StoryPipeline:
         Args:
             story_text: The Vietnamese story text
             project_name: Name for the project folder
-            video_mode: "ken_burns" or "wan21"
             progress: Progress callback function
 
         Returns:
@@ -357,8 +330,8 @@ class StoryPipeline:
         # Step 3: Generate images
         scenes = self.step3_generate_images(scenes, project_dir, progress)
 
-        # Step 4: Generate videos
-        scenes = self.step4_generate_videos(scenes, project_dir, video_mode, progress)
+        # Step 4: Generate videos (Ken Burns)
+        scenes = self.step4_generate_videos(scenes, project_dir, progress)
 
         # Step 5: Merge final
         final_path = self.step5_merge_final(scenes, project_dir, progress=progress)
