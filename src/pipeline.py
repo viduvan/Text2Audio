@@ -32,13 +32,23 @@ class StoryPipeline:
     def _init_tts(self):
         if self.tts_engine is None:
             cfg = self.config.tts
-            self.tts_engine = create_tts_engine(
-                engine_type=cfg.engine,
-                voice=cfg.voice,
-                rate=cfg.rate,
-                pitch=cfg.pitch,
-                volume=cfg.volume,
-            )
+            if cfg.engine == "vieneu":
+                self.tts_engine = create_tts_engine(
+                    engine_type="vieneu",
+                    mode=cfg.vieneu_mode,
+                    emotion=cfg.vieneu_emotion,
+                    voice_id=cfg.vieneu_voice_id,
+                    ref_audio=cfg.vieneu_ref_audio,
+                    ref_text=cfg.vieneu_ref_text,
+                )
+            else:
+                self.tts_engine = create_tts_engine(
+                    engine_type=cfg.engine,
+                    voice=cfg.voice,
+                    rate=cfg.rate,
+                    pitch=cfg.pitch,
+                    volume=cfg.volume,
+                )
 
     def _init_image(self):
         if self.image_generator is None:
@@ -121,7 +131,9 @@ class StoryPipeline:
                 logger.info(f"Skipping scene {i} (already done)")
                 continue
 
-            output_path = os.path.join(audio_dir, f"scene_{scene.scene_id:04d}.mp3")
+            # VieNeu outputs WAV, edge-tts outputs MP3
+            audio_ext = ".wav" if self.config.tts.engine == "vieneu" else ".mp3"
+            output_path = os.path.join(audio_dir, f"scene_{scene.scene_id:04d}{audio_ext}")
 
             try:
                 path, timestamps = self.tts_engine.generate(
