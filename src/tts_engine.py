@@ -141,6 +141,7 @@ class VieNeuTTSEngine:
         self.voice_id = voice_id  # Preset voice ID (e.g. "Ly", "Tuyen")
         self.ref_audio = ref_audio  # Path to reference audio for cloning
         self.ref_text = ref_text    # Reference text for cloning (standard mode)
+        self.rate = kwargs.get("rate", "+0%")
         self.tts = None
         self._voice_data = None
 
@@ -233,6 +234,25 @@ class VieNeuTTSEngine:
 
         # Generate audio
         audio = self.tts.infer(text=text, voice=self._voice_data)
+
+        # Apply speed adjustment if needed
+        if self.rate and self.rate != "+0%":
+            try:
+                import librosa
+                import numpy as np
+                rate_val = 1.0 + float(self.rate.strip('%').strip('+')) / 100.0
+                if abs(rate_val - 1.0) > 0.01:
+                    # Convert to float32 for librosa
+                    if audio.dtype != np.float32:
+                        audio = audio.astype(np.float32)
+                        # Normalize if it's 16-bit PCM
+                        if np.max(np.abs(audio)) > 1.0:
+                            audio = audio / 32768.0
+                    audio = librosa.effects.time_stretch(audio, rate=rate_val)
+                    logger.info(f"Stretched VieNeu audio by {rate_val}x")
+            except Exception as e:
+                logger.warning(f"Could not apply speed to VieNeu audio: {e}")
+
         self.tts.save(audio, wav_path)
 
         logger.info(f"VieNeu audio saved: {wav_path}")
