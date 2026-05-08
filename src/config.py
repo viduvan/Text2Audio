@@ -29,16 +29,36 @@ def ensure_directories(config: dict):
 
 @dataclass
 class TTSConfig:
-    engine: str = "edge-tts"
+    engine: str = "vieneu"
     voice: str = "vi-VN-HoaiMyNeural"
     rate: str = "+0%"
     pitch: str = "+0Hz"
     volume: str = "+0%"
     output_format: str = "mp3"
+    # VieNeu-TTS specific
+    vieneu_mode: str = "standard"
+    vieneu_emotion: str = "storytelling"
+    vieneu_voice_id: Optional[str] = "Ly"
+    vieneu_ref_audio: Optional[str] = None
+    vieneu_ref_text: Optional[str] = None
 
     @classmethod
     def from_dict(cls, d: dict) -> "TTSConfig":
-        return cls(**{k: v for k, v in d.items() if k in cls.__dataclass_fields__})
+        # Extract VieNeu nested config
+        vieneu = d.get("vieneu", {})
+        return cls(
+            engine=d.get("engine", "vieneu"),
+            voice=d.get("voice", "vi-VN-HoaiMyNeural"),
+            rate=d.get("rate", "+0%"),
+            pitch=d.get("pitch", "+0Hz"),
+            volume=d.get("volume", "+0%"),
+            output_format=d.get("output_format", "mp3"),
+            vieneu_mode=vieneu.get("mode", "standard"),
+            vieneu_emotion=vieneu.get("emotion", "storytelling"),
+            vieneu_voice_id=vieneu.get("voice_id", "Ly"),
+            vieneu_ref_audio=vieneu.get("ref_audio"),
+            vieneu_ref_text=vieneu.get("ref_text"),
+        )
 
 
 @dataclass
