@@ -194,7 +194,7 @@ def load_story_file(file):
 def preview_scenes(story_text, min_chars, max_chars, image_style):
     """Preview how the story will be split into scenes."""
     if not story_text.strip():
-        return "⚠️ Vui lòng nhập nội dung truyện!", ""
+        return " Vui lòng nhập nội dung truyện!", ""
 
     style_prefix = get_style_prefix(image_style) if image_style else ""
     scenes = split_text_to_scenes(
@@ -204,20 +204,20 @@ def preview_scenes(story_text, min_chars, max_chars, image_style):
         style_prefix=style_prefix,
     )
 
-    preview = f"📊 **Tổng cộng: {len(scenes)} scene** | Style: **{IMAGE_STYLES.get(image_style, {}).get('label', image_style)}**\n\n"
+    preview = f" **Tổng cộng: {len(scenes)} scene** | Style: **{IMAGE_STYLES.get(image_style, {}).get('label', image_style)}**\n\n"
     for s in scenes:
         text_preview = s.text[:150] + "..." if len(s.text) > 150 else s.text
         preview += f"---\n**Scene {s.scene_id + 1}** ({len(s.text)} ký tự)\n\n"
         preview += f"📝 {text_preview}\n\n"
-        preview += f"🎨 *Prompt:* {s.image_prompt[:120]}...\n\n"
+        preview += f" *Prompt:* {s.image_prompt[:120]}...\n\n"
 
-    return preview, f"✅ {len(scenes)} scenes"
+    return preview, f" {len(scenes)} scenes"
 
 
 def run_tts_only(text, engine_type, voice_or_id, rate, emotion):
     """Run TTS on a single text input."""
     if not text.strip():
-        return None, "⚠️ Vui lòng nhập text!"
+        return None, " Vui lòng nhập text!"
 
     output_dir = os.path.join(PROJECT_ROOT, "output", "tts_preview")
     os.makedirs(output_dir, exist_ok=True)
@@ -242,10 +242,10 @@ def run_tts_only(text, engine_type, voice_or_id, rate, emotion):
         output_path = os.path.join(output_dir, f"preview_{int(time.time())}.{ext}")
         path, _ = engine.generate(text, output_path)
         duration = engine.get_audio_duration(path)
-        return path, f"✅ Audio tạo thành công! ({duration:.1f}s) [{engine_type}]"
+        return path, f" Audio tạo thành công! ({duration:.1f}s) [{engine_type}]"
     except Exception as e:
         logger.exception("TTS error")
-        return None, f"❌ Lỗi: {str(e)}"
+        return None, f" Lỗi: {str(e)}"
 
 
 def run_full_pipeline(
@@ -255,7 +255,7 @@ def run_full_pipeline(
 ):
     """Run the full 8-node story-to-video pipeline."""
     if not story_text.strip():
-        yield "⚠️ Vui lòng nhập nội dung truyện!", None, None, None, []
+        yield " Vui lòng nhập nội dung truyện!", None, None, None, []
         return
 
     if not project_name.strip():
@@ -313,46 +313,46 @@ def run_full_pipeline(
 
         # N1: Text Rewrite (anti-copyright)
         if config.rewriter.enabled:
-            yield log("🔄 N1: Đang viết lại truyện (chống bản quyền)..."), None, None, None, []
+            yield log(" N1: Đang viết lại truyện (chống bản quyền)..."), None, None, None, []
             story_text = pipe.step0_rewrite_text(story_text, project_dir, progress_cb)
-            yield log("✅ N1 hoàn tất: Truyện đã được viết lại"), None, None, None, []
+            yield log(" N1 hoàn tất: Truyện đã được viết lại"), None, None, None, []
         else:
-            yield log("⏭️ N1: Bỏ qua viết lại truyện"), None, None, None, []
+            yield log(" N1: Bỏ qua viết lại truyện"), None, None, None, []
 
         # N2: Scene Split + Watermark
         yield log("✂️ N2: Đang chia đoạn + chèn watermark..."), None, None, None, []
         scenes = pipe.step1_process_text(story_text, project_dir, progress_cb)
         wm_count = sum(1 for s in scenes if s.is_watermark)
         content_count = len(scenes) - wm_count
-        yield log(f"✅ N2 hoàn tất: {content_count} đoạn + {wm_count} watermarks"), None, None, None, []
+        yield log(f" N2 hoàn tất: {content_count} đoạn + {wm_count} watermarks"), None, None, None, []
 
         # N3: TTS Audio
         yield log("🔊 N3: Đang tạo audio..."), None, None, None, []
         scenes = pipe.step2_generate_audio(scenes, project_dir, progress_cb)
         total_duration = sum(s.audio_duration for s in scenes)
         first_audio = next((s.audio_path for s in scenes if s.audio_path), None)
-        yield log(f"✅ N3 hoàn tất: {total_duration:.1f}s audio"), first_audio, None, None, []
+        yield log(f" N3 hoàn tất: {total_duration:.1f}s audio"), first_audio, None, None, []
 
         # N4: Image Generation (SDXL + LCM LoRA)
         yield log("🎨 N4: Đang tạo hình ảnh (LCM LoRA)..."), first_audio, None, None, []
         scenes = pipe.step3_generate_images(scenes, project_dir, progress_cb)
         images = [s.image_path for s in scenes if s.image_path and os.path.exists(s.image_path)]
-        yield log(f"✅ N4 hoàn tất: {len(images)} images"), first_audio, None, None, images
+        yield log(f" N4 hoàn tất: {len(images)} images"), first_audio, None, None, images
 
         # N5: Ken Burns Video
         yield log("🎬 N5: Đang tạo video (Ken Burns)..."), first_audio, None, None, images
         scenes = pipe.step4_generate_videos(scenes, project_dir, progress_cb)
-        yield log("✅ N5 hoàn tất"), first_audio, None, None, images
+        yield log(" N5 hoàn tất"), first_audio, None, None, images
 
         # N6: Subtitle Generation
         yield log("📝 N6: Đang tạo phụ đề..."), first_audio, None, None, images
         srt_path = pipe.step5_generate_subtitles(scenes, project_dir, progress_cb)
-        yield log("✅ N6 hoàn tất"), first_audio, None, None, images
+        yield log(" N6 hoàn tất"), first_audio, None, None, images
 
         # N7: Part Merge (with checkpoints)
         yield log("🎞️ N7: Đang ghép video theo parts..."), first_audio, None, None, images
         part_paths = pipe.step6_merge_parts(scenes, project_dir, progress_cb)
-        yield log(f"✅ N7 hoàn tất: {len(part_paths)} parts"), first_audio, None, None, images
+        yield log(f" N7 hoàn tất: {len(part_paths)} parts"), first_audio, None, None, images
 
         # N8: Final Assembly
         yield log("📦 N8: Đang hoàn thiện video cuối cùng..."), first_audio, None, None, images
@@ -360,7 +360,7 @@ def run_full_pipeline(
             part_paths, srt_path, project_dir, progress=progress_cb,
         )
         yield (
-            log(f"🎉 HOÀN TẤT! Video: {final_path}"),
+            log(f" HOÀN TẤT! Video: {final_path}"),
             first_audio,
             final_path,
             final_path,
@@ -369,7 +369,7 @@ def run_full_pipeline(
 
     except Exception as e:
         logger.exception("Pipeline error")
-        yield log(f"❌ LỖI: {str(e)}"), None, None, None, []
+        yield log(f" LỖI: {str(e)}"), None, None, None, []
 
 
 # ─────────────────────────────────────────────
@@ -400,7 +400,7 @@ def create_ui():
             # ═══════════════════════════════
             # TAB 1: FULL PIPELINE
             # ═══════════════════════════════
-            with gr.Tab("🚀 Pipeline", id="pipeline"):
+            with gr.Tab(" Pipeline", id="pipeline"):
                 with gr.Row():
                     # ── Left: Input ──
                     with gr.Column(scale=3):
@@ -770,21 +770,6 @@ def create_ui():
                 gr.Markdown("""
                 ## 📖 Text2Audio Studio - Hướng dẫn sử dụng
 
-                ### Pipeline hoạt động như thế nào?
-
-                ```
-                📄 Truyện (Tiếng Việt)
-                    ↓
-                🔪 Chia thành các đoạn (scenes)
-                    ↓
-                🔊 Tạo audio cho mỗi đoạn (edge-tts)
-                    ↓
-                🎨 Tạo hình minh họa anime (SDXL)
-                    ↓
-                🎬 Tạo video từ hình (Ken Burns / Wan 2.1)
-                    ↓
-                🎞️ Ghép tất cả → Video YouTube
-                ```
 
                 ### Chế độ Video
 
