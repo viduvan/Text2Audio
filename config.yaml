@@ -10,20 +10,21 @@ text_processor:
   max_scene_chars: 1000
 
 tts:
-  engine: "vieneu"  # "vieneu" (local, 7+ voices) hoặc "edge-tts" (cloud, 2 voices)
+  engine: "vieneu"  # "vieneu" (HuggingFace Hub) hoặc "edge-tts" (cloud, 2 voices)
   # Edge-TTS settings
   voice: "vi-VN-HoaiMyNeural"
   rate: "+0%"
   pitch: "+0Hz"
   volume: "+0%"
-  output_format: "mp3"
-  # VieNeu-TTS settings
+  output_format: "wav"
+  # VieNeu-TTS v3 Turbo settings (model tải từ HuggingFace Hub)
   vieneu:
-    mode: "standard"           # "standard" (chất lượng cao) hoặc "turbo" (nhanh hơn)
-    emotion: "storytelling"    # "storytelling" (kể chuyện) hoặc "natural" (tự nhiên)
-    voice_id: "Ly"             # Preset: Ly, Tuyen, Binh, Vinh, Doan, Sơn, Ngoc
-    ref_audio: null            # Đường dẫn file audio mẫu (cho clone giọng)
-    ref_text: null             # Text tham chiếu (cho clone standard mode)
+    model_id: "pnnbao-ump/VieNeu-TTS-v3-Turbo"  # HuggingFace Hub model ID
+    mode: "turbo"              # v3 Turbo chỉ hỗ trợ turbo mode
+    emotion: "natural"         # "natural" (tự nhiên) hoặc "storytelling" (kể chuyện)
+    voice_id: "Ngọc Lan"       # Giọng mặc định. Các giọng v3: Ngọc Lan, Ngọc Linh, Trúc Ly, Mỹ Duyên, Xuân Vĩnh, Thái Sơn, Gia Bảo, Đức Trí, Trọng Hữu, Bình An
+    ref_audio: null            # Đường dẫn file audio mẫu (cho voice cloning 3-5s)
+    ref_text: null             # (Không dùng trong v3)
 
 image:
   model_id: "./models/animagine-xl-3.1"
