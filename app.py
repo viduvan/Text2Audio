@@ -8,6 +8,12 @@ import time
 import logging
 import gradio as gr
 from pathlib import Path
+try:
+    from dotenv import load_dotenv
+    # Load .env file (GEMINI_API_KEY, etc.)
+    load_dotenv(os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env"))
+except ImportError:
+    pass  # python-dotenv not installed, use system env variables
 
 # Setup logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -244,11 +250,13 @@ def run_tts_only(text, engine_type, voice_or_id, rate, emotion):
 
 def run_full_pipeline(
     story_text, project_name, tts_engine, voice_or_id, rate, emotion,
-    image_style, progress=gr.Progress(track_tqdm=True)
+    image_style, rewrite_enabled, rewrite_provider, channel_name, watermark_enabled,
+    progress=gr.Progress(track_tqdm=True)
 ):
-    """Run the full story-to-video pipeline."""
+    """Run the full 8-node story-to-video pipeline."""
     if not story_text.strip():
         yield "⚠️ Vui lòng nhập nội dung truyện!", None, None, None, []
+        return
 
     if not project_name.strip():
         project_name = f"project_{int(time.time())}"
@@ -268,8 +276,10 @@ def run_full_pipeline(
         log(message)
 
     try:
-        # Initialize pipeline
+        # Initialize pipeline config
         config = PipelineConfig.from_yaml(CONFIG_PATH)
+
+        # Apply TTS settings from UI
         config.tts.engine = tts_engine
         config.tts.rate = rate or "+0%"
         if tts_engine == "vieneu":
@@ -277,6 +287,16 @@ def run_full_pipeline(
             config.tts.vieneu_voice_id = voice_or_id if voice_or_id else "Ngọc Lan"
         else:
             config.tts.voice = voice_or_id or "vi-VN-HoaiMyNeural"
+
+        # Apply rewriter settings from UI
+        config.rewriter.enabled = rewrite_enabled
+        if rewrite_provider:
+            config.rewriter.provider = rewrite_provider
+
+        # Apply watermark settings from UI
+        config.watermark.enabled = watermark_enabled
+        if channel_name and channel_name.strip():
+            config.watermark.channel_name = channel_name.strip()
 
         # Apply image style
         style_prefix = get_style_prefix(image_style) if image_style else ""
@@ -291,32 +311,54 @@ def run_full_pipeline(
         project_dir = os.path.join(config.output_dir, project_name)
         os.makedirs(project_dir, exist_ok=True)
 
-        # Step 1: Process text
-        yield log("📝 Bước 1: Đang chia đoạn truyện..."), None, None, None, []
-        scenes = pipe.step1_process_text(story_text, project_dir, progress_cb)
-        yield log(f"✅ Bước 1 hoàn tất: {len(scenes)} scenes"), None, None, None, []
+        # N1: Text Rewrite (anti-copyright)
+        if config.rewriter.enabled:
+            yield log("🔄 N1: Đang viết lại truyện (chống bản quyền)..."), None, None, None, []
+            story_text = pipe.step0_rewrite_text(story_text, project_dir, progress_cb)
+            yield log("✅ N1 hoàn tất: Truyện đã được viết lại"), None, None, None, []
+        else:
+            yield log("⏭️ N1: Bỏ qua viết lại truyện"), None, None, None, []
 
-        # Step 2: Generate audio
-        yield log("🔊 Bước 2: Đang tạo audio..."), None, None, None, []
+        # N2: Scene Split + Watermark
+        yield log("✂️ N2: Đang chia đoạn + chèn watermark..."), None, None, None, []
+        scenes = pipe.step1_process_text(story_text, project_dir, progress_cb)
+        wm_count = sum(1 for s in scenes if s.is_watermark)
+        content_count = len(scenes) - wm_count
+        yield log(f"✅ N2 hoàn tất: {content_count} đoạn + {wm_count} watermarks"), None, None, None, []
+
+        # N3: TTS Audio
+        yield log("🔊 N3: Đang tạo audio..."), None, None, None, []
         scenes = pipe.step2_generate_audio(scenes, project_dir, progress_cb)
         total_duration = sum(s.audio_duration for s in scenes)
         first_audio = next((s.audio_path for s in scenes if s.audio_path), None)
-        yield log(f"✅ Bước 2 hoàn tất: {total_duration:.1f}s audio"), first_audio, None, None, []
+        yield log(f"✅ N3 hoàn tất: {total_duration:.1f}s audio"), first_audio, None, None, []
 
-        # Step 3: Generate images
-        yield log("🎨 Bước 3: Đang tạo hình ảnh anime..."), first_audio, None, None, []
+        # N4: Image Generation (SDXL + LCM LoRA)
+        yield log("🎨 N4: Đang tạo hình ảnh (LCM LoRA)..."), first_audio, None, None, []
         scenes = pipe.step3_generate_images(scenes, project_dir, progress_cb)
         images = [s.image_path for s in scenes if s.image_path and os.path.exists(s.image_path)]
-        yield log(f"✅ Bước 3 hoàn tất: {len(images)} images"), first_audio, None, None, images
+        yield log(f"✅ N4 hoàn tất: {len(images)} images"), first_audio, None, None, images
 
-        # Step 4: Generate videos (Ken Burns)
-        yield log("🎬 Bước 4: Đang tạo video (Ken Burns)..."), first_audio, None, None, images
+        # N5: Ken Burns Video
+        yield log("🎬 N5: Đang tạo video (Ken Burns)..."), first_audio, None, None, images
         scenes = pipe.step4_generate_videos(scenes, project_dir, progress_cb)
-        yield log("✅ Bước 4 hoàn tất"), first_audio, None, None, images
+        yield log("✅ N5 hoàn tất"), first_audio, None, None, images
 
-        # Step 5: Merge final
-        yield log("🎞️ Bước 5: Đang ghép video cuối cùng..."), first_audio, None, None, images
-        final_path = pipe.step5_merge_final(scenes, project_dir, progress=progress_cb)
+        # N6: Subtitle Generation
+        yield log("📝 N6: Đang tạo phụ đề..."), first_audio, None, None, images
+        srt_path = pipe.step5_generate_subtitles(scenes, project_dir, progress_cb)
+        yield log("✅ N6 hoàn tất"), first_audio, None, None, images
+
+        # N7: Part Merge (with checkpoints)
+        yield log("🎞️ N7: Đang ghép video theo parts..."), first_audio, None, None, images
+        part_paths = pipe.step6_merge_parts(scenes, project_dir, progress_cb)
+        yield log(f"✅ N7 hoàn tất: {len(part_paths)} parts"), first_audio, None, None, images
+
+        # N8: Final Assembly
+        yield log("📦 N8: Đang hoàn thiện video cuối cùng..."), first_audio, None, None, images
+        final_path = pipe.step7_final_assembly(
+            part_paths, srt_path, project_dir, progress=progress_cb,
+        )
         yield (
             log(f"🎉 HOÀN TẤT! Video: {final_path}"),
             first_audio,
@@ -350,7 +392,7 @@ def create_ui():
         gr.HTML("""
         <div class="app-header">
             <h1>✨ Text2Audio Studio</h1>
-            <p>Chuyển đổi truyện thành video YouTube với AI | Vietnamese TTS + Anime Art + AI Video</p>
+            <p>Chuyển đổi truyện thành video YouTube với AI | 8-Node Pipeline | Text Rewrite + TTS + Anime Art + Ken Burns</p>
         </div>
         """)
 
@@ -494,6 +536,36 @@ def create_ui():
                                 outputs=[scene_preview, scene_count],
                             )
 
+                        # ── Rewriter & Watermark Settings ──
+                        with gr.Accordion("🔄 Viết lại & Watermark (chống bản quyền)", open=False):
+                            with gr.Row():
+                                rewrite_enabled = gr.Checkbox(
+                                    label="✍️ Viết lại truyện (paraphrase)",
+                                    value=True,
+                                    scale=2,
+                                )
+                                rewrite_provider = gr.Dropdown(
+                                    label="🤖 LLM Provider",
+                                    choices=[
+                                        ("☁️ Gemini API", "gemini"),
+                                        ("🖥️ Ollama (Local)", "ollama"),
+                                    ],
+                                    value="gemini",
+                                    scale=2,
+                                )
+                            with gr.Row():
+                                watermark_enabled = gr.Checkbox(
+                                    label="🔖 Chèn watermark audio (tên kênh)",
+                                    value=True,
+                                    scale=2,
+                                )
+                                channel_name = gr.Textbox(
+                                    label="📺 Tên kênh YouTube",
+                                    value="Kênh Truyện Audio",
+                                    placeholder="Nhập tên kênh của bạn...",
+                                    scale=2,
+                                )
+
                         # RUN button
                         run_btn = gr.Button(
                             "🚀 Bắt Đầu Tạo Video",
@@ -535,6 +607,7 @@ def create_ui():
                         story_input, project_name, tts_engine_select,
                         voice_select, rate_select, emotion_select,
                         image_style_select,
+                        rewrite_enabled, rewrite_provider, channel_name, watermark_enabled,
                     ],
                     outputs=[log_output, audio_preview, video_output, download_btn, gallery],
                 )
