@@ -134,13 +134,13 @@ class StoryPipeline:
         """
         if not self.config.rewriter.enabled:
             if progress:
-                progress(1, 1, "⏭️ Text rewrite disabled, skipping...")
+                progress(1, 1, " Text rewrite disabled, skipping...")
             return story_text
 
         self._init_rewriter()
 
         if progress:
-            progress(0, 1, "🔄 Đang viết lại truyện (chống bản quyền)...")
+            progress(0, 1, " Đang viết lại truyện (chống bản quyền)...")
 
         # Save original
         original_path = os.path.join(project_dir, "original_text.txt")
@@ -159,7 +159,7 @@ class StoryPipeline:
             f.write(rewritten)
 
         if progress:
-            progress(1, 1, f"✅ Viết lại hoàn tất ({len(rewritten)} chars)")
+            progress(1, 1, f" Viết lại hoàn tất ({len(rewritten)} chars)")
 
         return rewritten
 
@@ -198,7 +198,7 @@ class StoryPipeline:
         if progress:
             progress(
                 1, 1,
-                f"✅ {content_count} đoạn + {wm_count} watermarks = {len(scenes)} scenes"
+                f" {content_count} đoạn + {wm_count} watermarks = {len(scenes)} scenes"
             )
 
         return scenes
@@ -254,7 +254,7 @@ class StoryPipeline:
         save_scenes(scenes, os.path.join(project_dir, "scenes.json"))
 
         if progress:
-            progress(total, total, f"✅ Audio hoàn tất ({total} files)")
+            progress(total, total, f" Audio hoàn tất ({total} files)")
 
         return scenes
 
@@ -320,7 +320,7 @@ class StoryPipeline:
 
         if progress:
             content_images = sum(1 for s in scenes if not s.is_watermark and s.image_path)
-            progress(total, total, f"✅ Hình ảnh hoàn tất ({content_images} images)")
+            progress(total, total, f" Hình ảnh hoàn tất ({content_images} images)")
 
         return scenes
 
@@ -373,7 +373,7 @@ class StoryPipeline:
         save_scenes(scenes, os.path.join(project_dir, "scenes.json"))
 
         if progress:
-            progress(total, total, f"✅ Video hoàn tất ({total} clips)")
+            progress(total, total, f" Video hoàn tất ({total} clips)")
 
         return scenes
 
@@ -412,7 +412,7 @@ class StoryPipeline:
         self.post_processor.create_srt_from_scenes(scene_texts, srt_path)
 
         if progress:
-            progress(1, 1, f"✅ Phụ đề hoàn tất ({len(scene_texts)} entries)")
+            progress(1, 1, f" Phụ đề hoàn tất ({len(scene_texts)} entries)")
 
         return srt_path
 
@@ -489,7 +489,7 @@ class StoryPipeline:
         if progress:
             progress(
                 total_parts, total_parts,
-                f"✅ {len(part_paths)}/{total_parts} parts hoàn tất"
+                f" {len(part_paths)}/{total_parts} parts hoàn tất"
             )
 
         return part_paths
@@ -517,7 +517,7 @@ class StoryPipeline:
         os.makedirs(final_dir, exist_ok=True)
 
         if progress:
-            progress(0, 2, "📦 Ghép tất cả parts thành video cuối...")
+            progress(0, 2, " Ghép tất cả parts thành video cuối...")
 
         # Step 1: Merge parts
         if self.config.post_process.burn_subtitles and os.path.exists(srt_path):
@@ -550,7 +550,7 @@ class StoryPipeline:
             )
 
         if progress:
-            progress(2, 2, f"✅ Video hoàn tất: {final_path}")
+            progress(2, 2, f" Video hoàn tất: {final_path}")
 
         return final_path
 
