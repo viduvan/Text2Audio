@@ -36,9 +36,10 @@ class TTSConfig:
     volume: str = "+0%"
     output_format: str = "mp3"
     # VieNeu-TTS specific
-    vieneu_mode: str = "standard"
-    vieneu_emotion: str = "storytelling"
-    vieneu_voice_id: Optional[str] = "Ly"
+    vieneu_model_id: str = "pnnbao-ump/VieNeu-TTS-v3-Turbo"  # HF Hub model ID
+    vieneu_mode: str = "turbo"       # v3 chỉ hỗ trợ turbo
+    vieneu_emotion: str = "natural"  # "natural" hoặc "storytelling"
+    vieneu_voice_id: Optional[str] = "Ngọc Lan"  # v3 default voice
     vieneu_ref_audio: Optional[str] = None
     vieneu_ref_text: Optional[str] = None
 
@@ -53,9 +54,10 @@ class TTSConfig:
             pitch=d.get("pitch", "+0Hz"),
             volume=d.get("volume", "+0%"),
             output_format=d.get("output_format", "mp3"),
-            vieneu_mode=vieneu.get("mode", "standard"),
-            vieneu_emotion=vieneu.get("emotion", "storytelling"),
-            vieneu_voice_id=vieneu.get("voice_id", "Ly"),
+            vieneu_model_id=vieneu.get("model_id", "pnnbao-ump/VieNeu-TTS-v3-Turbo"),
+            vieneu_mode=vieneu.get("mode", "turbo"),
+            vieneu_emotion=vieneu.get("emotion", "natural"),
+            vieneu_voice_id=vieneu.get("voice_id", "Ngọc Lan"),
             vieneu_ref_audio=vieneu.get("ref_audio"),
             vieneu_ref_text=vieneu.get("ref_text"),
         )
