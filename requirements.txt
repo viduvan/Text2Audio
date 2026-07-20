@@ -7,22 +7,26 @@ pyyaml>=6.0
 tqdm>=4.65
 Pillow>=10.0
 aiofiles>=23.0
+python-dotenv>=1.0              # Load .env file
 
-# --- TTS (Text-to-Speech) ---
+# --- Text Rewriter (N1) ---
+google-genai>=1.0              # Gemini API for text rewriting
+# ollama                       # Optional: pip install ollama (for local LLM)
+
+# --- TTS (Text-to-Speech, N3) ---
 edge-tts>=6.1
+soundfile>=0.12                # Audio duration measurement
 
-# --- Image Generation (SDXL Anime) ---
+# --- Image Generation (SDXL + LCM LoRA, N4) ---
 diffusers>=0.31.0
 transformers>=4.40.0
 accelerate>=0.30.0
 safetensors>=0.4.0
+peft>=0.11.0                   # LoRA adapter support
 
-# --- Video Processing ---
+# --- Video Processing (N5, N7, N8) ---
 moviepy>=2.0
 imageio[ffmpeg]>=2.34
-
-# --- AI Video Generation (Wan 2.1) ---
-# (uses diffusers, transformers, accelerate above)
 
 # --- Web UI ---
 gradio>=5.0
