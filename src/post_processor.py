@@ -170,6 +170,18 @@ class PostProcessor:
             logger.warning(f"SRT file not found: {srt_path}")
             return video_path
 
+        # Skip if SRT is empty (0 entries)
+        if os.path.getsize(srt_path) == 0:
+            logger.warning("SRT file is empty (0 bytes), skipping subtitle burn")
+            return video_path
+
+        # Also check content to ensure it has valid entries
+        with open(srt_path, "r", encoding="utf-8") as f:
+            srt_content = f.read().strip()
+        if not srt_content:
+            logger.warning("SRT file has no content, skipping subtitle burn")
+            return video_path
+
         os.makedirs(
             os.path.dirname(output_path) if os.path.dirname(output_path) else ".",
             exist_ok=True,

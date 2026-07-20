@@ -160,7 +160,11 @@ class VieNeuTTSEngine:
             )
 
         logger.info(f"Loading VieNeu-TTS v3 Turbo from HF Hub: {self.model_id}")
-        self.tts = Vieneu(model_id=self.model_id)
+
+        # Vieneu 3.x defaults to v3-Turbo natively.
+        # We can just call the factory function without low-level args.
+        # It automatically handles PyTorch vs ONNX for v3.
+        self.tts = Vieneu()
 
         # Pre-load voice data
         if self.ref_audio and os.path.exists(self.ref_audio):
@@ -168,11 +172,7 @@ class VieNeuTTSEngine:
             self._voice_data = self.tts.encode_reference(self.ref_audio)
         elif self.voice_id:
             logger.info(f"Using preset voice: {self.voice_id}")
-            try:
-                self._voice_data = self.voice_id  # v3: pass name string directly
-            except Exception as e:
-                logger.warning(f"Could not set preset voice '{self.voice_id}': {e}")
-                self._voice_data = None
+            self._voice_data = self.voice_id  # v3: pass name string directly to infer()
 
         logger.info("VieNeu-TTS v3 Turbo loaded successfully")
 
@@ -188,16 +188,20 @@ class VieNeuTTSEngine:
         except Exception:
             # Fallback: return known v3 Turbo voices
             return [
-                ("Ngọc Lan (Nữ, Nhẹ nhàng)", "Ngọc Lan"),
                 ("Ngọc Linh (Nữ, Trong sáng)", "Ngọc Linh"),
                 ("Trúc Ly (Nữ, Trẻ trung)", "Trúc Ly"),
-                ("Mỹ Duyên (Nữ, Mượt mà)", "Mỹ Duyên"),
-                ("Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                ("Đoan Trang (Nữ, Nhẹ nhàng)", "Đoan Trang"),
+                ("Mai Anh (Nữ, Mượt mà)", "Mai Anh"),
+                ("Thục Đoan (Nữ, Ấm áp)", "Thục Đoan"),
+                ("Thùy Dung (Nữ, Cảm xúc)", "Thùy Dung"),
+                ("Ngọc Trân (Nữ, Lưu loát)", "Ngọc Trân"),
+                ("Minh Đức (Nam, Trầm ấm)", "Minh Đức"),
+                ("Phạm Tuyên (Nam, Chuyên nghiệp)", "Phạm Tuyên"),
                 ("Thái Sơn (Nam, Quyết đoán)", "Thái Sơn"),
-                ("Gia Bảo (Nam, Mượt mà)", "Gia Bảo"),
-                ("Đức Trí (Nam, Rõ ràng)", "Đức Trí"),
-                ("Trọng Hữu (Nam, Chính trực)", "Trọng Hữu"),
-                ("Bình An (Nam, Nhẹ nhàng)", "Bình An"),
+                ("Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                ("Thanh Bình (Nam, Điềm đạm)", "Thanh Bình"),
+                ("Minh Triết (Nam, Rõ ràng)", "Minh Triết"),
+                ("Quang Sơn (Nam, Chắc chắn)", "Quang Sơn"),
             ]
 
     def set_voice(self, voice_id: str):
@@ -246,7 +250,7 @@ class VieNeuTTSEngine:
             wav_path = output_path
 
         # Generate audio — v3 API: voice is passed as a string name
-        voice_arg = self._voice_data if self._voice_data else "Ngọc Lan"
+        voice_arg = self._voice_data if self._voice_data else "Ngọc Linh"
         audio = self.tts.infer(text=text, voice=voice_arg)
 
         # Apply speed adjustment if needed

@@ -45,9 +45,9 @@ tts:
   # VieNeu-TTS v3 Turbo settings
   vieneu:
     model_id: "pnnbao-ump/VieNeu-TTS-v3-Turbo"
-    mode: "turbo"
+    mode: "standard"           # v3-Turbo dùng safetensors → mode=standard
     emotion: "natural"
-    voice_id: "Ngọc Lan"
+    voice_id: "Ngọc Linh"
     ref_audio: null
     ref_text: null
 

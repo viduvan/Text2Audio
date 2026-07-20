@@ -227,7 +227,7 @@ def run_tts_only(text, engine_type, voice_or_id, rate, emotion):
             engine = create_tts_engine(
                 engine_type="vieneu",
                 emotion=emotion or "natural",
-                voice_id=voice_or_id if voice_or_id else "Ngọc Lan",
+                voice_id=voice_or_id if voice_or_id else "Ngọc Linh",
                 rate=rate or "+0%",
             )
             ext = "wav"
@@ -284,7 +284,7 @@ def run_full_pipeline(
         config.tts.rate = rate or "+0%"
         if tts_engine == "vieneu":
             config.tts.vieneu_emotion = emotion or "natural"
-            config.tts.vieneu_voice_id = voice_or_id if voice_or_id else "Ngọc Lan"
+            config.tts.vieneu_voice_id = voice_or_id if voice_or_id else "Ngọc Linh"
         else:
             config.tts.voice = voice_or_id or "vi-VN-HoaiMyNeural"
 
@@ -442,18 +442,22 @@ def create_ui():
                             voice_select = gr.Dropdown(
                                 label="🎤 Giọng đọc",
                                 choices=[
-                                    ("🎤 Ngọc Lan (Nữ, Nhẹ nhàng)", "Ngọc Lan"),
                                     ("🎤 Ngọc Linh (Nữ, Trong sáng)", "Ngọc Linh"),
                                     ("🎤 Trúc Ly (Nữ, Trẻ trung)", "Trúc Ly"),
-                                    ("🎤 Mỹ Duyên (Nữ, Mượt mà)", "Mỹ Duyên"),
-                                    ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                    ("🎤 Đoan Trang (Nữ, Nhẹ nhàng)", "Đoan Trang"),
+                                    ("🎤 Mai Anh (Nữ, Mượt mà)", "Mai Anh"),
+                                    ("🎤 Thục Đoan (Nữ, Ấm áp)", "Thục Đoan"),
+                                    ("🎤 Thùy Dung (Nữ, Cảm xúc)", "Thùy Dung"),
+                                    ("🎤 Ngọc Trân (Nữ, Lưu loát)", "Ngọc Trân"),
+                                    ("🎤 Minh Đức (Nam, Trầm ấm)", "Minh Đức"),
+                                    ("🎤 Phạm Tuyên (Nam, Chuyên nghiệp)", "Phạm Tuyên"),
                                     ("🎤 Thái Sơn (Nam, Quyết đoán)", "Thái Sơn"),
-                                    ("🎤 Gia Bảo (Nam, Mượt mà)", "Gia Bảo"),
-                                    ("🎤 Đức Trí (Nam, Rõ ràng)", "Đức Trí"),
-                                    ("🎤 Trọng Hữu (Nam, Chính trực)", "Trọng Hữu"),
-                                    ("🎤 Bình An (Nam, Nhẹ nhàng)", "Bình An"),
+                                    ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                    ("🎤 Thanh Bình (Nam, Điềm đạm)", "Thanh Bình"),
+                                    ("🎤 Minh Triết (Nam, Rõ ràng)", "Minh Triết"),
+                                    ("🎤 Quang Sơn (Nam, Chắc chắn)", "Quang Sơn"),
                                 ],
-                                value="Ngọc Lan",
+                                value="Ngọc Linh",
                                 scale=2,
                             )
                             emotion_select = gr.Dropdown(
@@ -493,18 +497,22 @@ def create_ui():
                             if engine == "vieneu":
                                 return gr.update(
                                     choices=[
-                                        ("🎤 Ngọc Lan (Nữ, Nhẹ nhàng)", "Ngọc Lan"),
                                         ("🎤 Ngọc Linh (Nữ, Trong sáng)", "Ngọc Linh"),
                                         ("🎤 Trúc Ly (Nữ, Trẻ trung)", "Trúc Ly"),
-                                        ("🎤 Mỹ Duyên (Nữ, Mượt mà)", "Mỹ Duyên"),
-                                        ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                        ("🎤 Đoan Trang (Nữ, Nhẹ nhàng)", "Đoan Trang"),
+                                        ("🎤 Mai Anh (Nữ, Mượt mà)", "Mai Anh"),
+                                        ("🎤 Thục Đoan (Nữ, Ấm áp)", "Thục Đoan"),
+                                        ("🎤 Thùy Dung (Nữ, Cảm xúc)", "Thùy Dung"),
+                                        ("🎤 Ngọc Trân (Nữ, Lưu loát)", "Ngọc Trân"),
+                                        ("🎤 Minh Đức (Nam, Trầm ấm)", "Minh Đức"),
+                                        ("🎤 Phạm Tuyên (Nam, Chuyên nghiệp)", "Phạm Tuyên"),
                                         ("🎤 Thái Sơn (Nam, Quyết đoán)", "Thái Sơn"),
-                                        ("🎤 Gia Bảo (Nam, Mượt mà)", "Gia Bảo"),
-                                        ("🎤 Đức Trí (Nam, Rõ ràng)", "Đức Trí"),
-                                        ("🎤 Trọng Hữu (Nam, Chính trực)", "Trọng Hữu"),
-                                        ("🎤 Bình An (Nam, Nhẹ nhàng)", "Bình An"),
+                                        ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                        ("🎤 Thanh Bình (Nam, Điềm đạm)", "Thanh Bình"),
+                                        ("🎤 Minh Triết (Nam, Rõ ràng)", "Minh Triết"),
+                                        ("🎤 Quang Sơn (Nam, Chắc chắn)", "Quang Sơn"),
                                     ],
-                                    value="Ngọc Lan",
+                                    value="Ngọc Linh",
                                 )
                             else:
                                 return gr.update(
@@ -545,7 +553,7 @@ def create_ui():
                                     scale=2,
                                 )
                                 rewrite_provider = gr.Dropdown(
-                                    label="🤖 LLM Provider",
+                                    label=" LLM Provider",
                                     choices=[
                                         ("☁️ Gemini API", "gemini"),
                                         ("🖥️ Ollama (Local)", "ollama"),
@@ -638,18 +646,22 @@ def create_ui():
                             tts_voice = gr.Dropdown(
                                 label="🎤 Giọng đọc",
                                 choices=[
-                                    ("🎤 Ngọc Lan (Nữ, Nhẹ nhàng)", "Ngọc Lan"),
                                     ("🎤 Ngọc Linh (Nữ, Trong sáng)", "Ngọc Linh"),
                                     ("🎤 Trúc Ly (Nữ, Trẻ trung)", "Trúc Ly"),
-                                    ("🎤 Mỹ Duyên (Nữ, Mượt mà)", "Mỹ Duyên"),
-                                    ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                    ("🎤 Đoan Trang (Nữ, Nhẹ nhàng)", "Đoan Trang"),
+                                    ("🎤 Mai Anh (Nữ, Mượt mà)", "Mai Anh"),
+                                    ("🎤 Thục Đoan (Nữ, Ấm áp)", "Thục Đoan"),
+                                    ("🎤 Thùy Dung (Nữ, Cảm xúc)", "Thùy Dung"),
+                                    ("🎤 Ngọc Trân (Nữ, Lưu loát)", "Ngọc Trân"),
+                                    ("🎤 Minh Đức (Nam, Trầm ấm)", "Minh Đức"),
+                                    ("🎤 Phạm Tuyên (Nam, Chuyên nghiệp)", "Phạm Tuyên"),
                                     ("🎤 Thái Sơn (Nam, Quyết đoán)", "Thái Sơn"),
-                                    ("🎤 Gia Bảo (Nam, Mượt mà)", "Gia Bảo"),
-                                    ("🎤 Đức Trí (Nam, Rõ ràng)", "Đức Trí"),
-                                    ("🎤 Trọng Hữu (Nam, Chính trực)", "Trọng Hữu"),
-                                    ("🎤 Bình An (Nam, Nhẹ nhàng)", "Bình An"),
+                                    ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                    ("🎤 Thanh Bình (Nam, Điềm đạm)", "Thanh Bình"),
+                                    ("🎤 Minh Triết (Nam, Rõ ràng)", "Minh Triết"),
+                                    ("🎤 Quang Sơn (Nam, Chắc chắn)", "Quang Sơn"),
                                 ],
-                                value="Ngọc Lan",
+                                value="Ngọc Linh",
                             )
                         with gr.Row():
                             tts_emotion = gr.Dropdown(
@@ -675,18 +687,22 @@ def create_ui():
                             if engine == "vieneu":
                                 return gr.update(
                                     choices=[
-                                        ("🎤 Ngọc Lan (Nữ, Nhẹ nhàng)", "Ngọc Lan"),
                                         ("🎤 Ngọc Linh (Nữ, Trong sáng)", "Ngọc Linh"),
                                         ("🎤 Trúc Ly (Nữ, Trẻ trung)", "Trúc Ly"),
-                                        ("🎤 Mỹ Duyên (Nữ, Mượt mà)", "Mỹ Duyên"),
-                                        ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                        ("🎤 Đoan Trang (Nữ, Nhẹ nhàng)", "Đoan Trang"),
+                                        ("🎤 Mai Anh (Nữ, Mượt mà)", "Mai Anh"),
+                                        ("🎤 Thục Đoan (Nữ, Ấm áp)", "Thục Đoan"),
+                                        ("🎤 Thùy Dung (Nữ, Cảm xúc)", "Thùy Dung"),
+                                        ("🎤 Ngọc Trân (Nữ, Lưu loát)", "Ngọc Trân"),
+                                        ("🎤 Minh Đức (Nam, Trầm ấm)", "Minh Đức"),
+                                        ("🎤 Phạm Tuyên (Nam, Chuyên nghiệp)", "Phạm Tuyên"),
                                         ("🎤 Thái Sơn (Nam, Quyết đoán)", "Thái Sơn"),
-                                        ("🎤 Gia Bảo (Nam, Mượt mà)", "Gia Bảo"),
-                                        ("🎤 Đức Trí (Nam, Rõ ràng)", "Đức Trí"),
-                                        ("🎤 Trọng Hữu (Nam, Chính trực)", "Trọng Hữu"),
-                                        ("🎤 Bình An (Nam, Nhẹ nhàng)", "Bình An"),
+                                        ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                        ("🎤 Thanh Bình (Nam, Điềm đạm)", "Thanh Bình"),
+                                        ("🎤 Minh Triết (Nam, Rõ ràng)", "Minh Triết"),
+                                        ("🎤 Quang Sơn (Nam, Chắc chắn)", "Quang Sơn"),
                                     ],
-                                    value="Ngọc Lan",
+                                    value="Ngọc Linh",
                                 )
                             else:
                                 return gr.update(

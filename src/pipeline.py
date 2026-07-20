@@ -520,7 +520,14 @@ class StoryPipeline:
             progress(0, 2, " Ghép tất cả parts thành video cuối...")
 
         # Step 1: Merge parts
-        if self.config.post_process.burn_subtitles and os.path.exists(srt_path):
+        # Check if SRT has content
+        srt_has_content = (
+            os.path.exists(srt_path)
+            and os.path.getsize(srt_path) > 0
+            and open(srt_path, encoding="utf-8").read().strip()
+        )
+
+        if self.config.post_process.burn_subtitles and srt_has_content:
             # Merge to temp, then burn subs
             temp_path = os.path.join(final_dir, "_temp_merged.mp4")
             merged_path = self.post_processor.merge_parts_to_final(
