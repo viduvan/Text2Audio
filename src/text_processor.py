@@ -6,6 +6,8 @@ import logging
 from dataclasses import dataclass, field, asdict
 from typing import List, Optional
 
+from src.config import WatermarkConfig
+
 logger = logging.getLogger(__name__)
 
 
@@ -15,12 +17,13 @@ class Scene:
     scene_id: int
     text: str  # Vietnamese text for TTS
     image_prompt: str = ""  # English prompt for SDXL
-    video_prompt: str = ""  # English prompt for Wan 2.1
     audio_path: Optional[str] = None
     image_path: Optional[str] = None
     video_path: Optional[str] = None
     audio_duration: float = 0.0
     status: str = "pending"  # pending, processing, done, error
+    part_id: int = 0  # Which part this scene belongs to
+    is_watermark: bool = False  # True if this is a watermark scene (no image gen needed)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -56,6 +59,27 @@ SCENE_KEYWORDS = {
     "công chúa": "princess, royal, elegant",
     "rồng": "dragon, mythical, powerful",
     "kiếm": "sword, weapon, warrior",
+    # Extended keywords
+    "lâu đài": "castle, palace, grand architecture",
+    "hang động": "cave, dark, underground, stalactite",
+    "đồng cỏ": "meadow, grassland, open field",
+    "cầu": "bridge, crossing, river",
+    "thuyền": "boat, sailing, water",
+    "ngựa": "horse, riding, galloping",
+    "chiến binh": "warrior, armor, battle-ready",
+    "pháp sư": "wizard, sorcerer, magical robes",
+    "yêu tinh": "fairy, magical creature, enchanted",
+    "quái vật": "monster, creature, terrifying",
+    "kho báu": "treasure, gold, chest",
+    "ngôi đền": "temple, shrine, ancient",
+    "sa mạc": "desert, sand dunes, arid",
+    "thác nước": "waterfall, cascade, mist",
+    "cung điện": "palace, royal court, throne",
+    "trận chiến": "battle scene, war, clash",
+    "tiệc": "feast, celebration, party",
+    "đám cưới": "wedding, ceremony, love",
+    "tang lễ": "funeral, mourning, sorrow",
+    "lửa": "fire, flames, burning",
 }
 
 # ─── Image Style Presets ───
@@ -240,12 +264,122 @@ def split_text_to_scenes(
             scene_id=i,
             text=scene_text,
             image_prompt=img_prompt,
-            video_prompt=img_prompt,  # Reuse image prompt for video
         )
         scenes.append(scene)
 
     logger.info(f"Split text into {len(scenes)} scenes")
     return scenes
+
+
+def inject_watermarks(
+    scenes: List[Scene],
+    watermark_config: WatermarkConfig,
+    parts_per_video: int = 10,
+) -> List[Scene]:
+    """Inject watermark scenes into the scene list.
+
+    Watermarks are inserted at:
+    1. Before the first scene (intro)
+    2. Every `interval_scenes` scenes (middle)
+    3. At the end of each part (part_end)
+    4. After the last scene (outro)
+
+    Watermark scenes reuse the image from the previous content scene.
+
+    Args:
+        scenes: List of content scenes
+        watermark_config: Watermark configuration
+        parts_per_video: Number of parts to divide the video into
+
+    Returns:
+        New list with watermark scenes injected and part_ids assigned
+    """
+    if not watermark_config.enabled or not scenes:
+        # Still assign part_ids even if watermark disabled
+        scenes_per_part = max(1, len(scenes) // parts_per_video)
+        for i, scene in enumerate(scenes):
+            scene.part_id = i // scenes_per_part
+        return scenes
+
+    interval = watermark_config.interval_scenes
+    total_scenes = len(scenes)
+    scenes_per_part = max(1, total_scenes // parts_per_video)
+
+    result = []
+    content_index = 0  # Track position in original content scenes
+    new_id = 0
+
+    # Assign part_ids to content scenes first
+    for i, scene in enumerate(scenes):
+        scene.part_id = min(i // scenes_per_part, parts_per_video - 1)
+
+    # 1. Intro watermark
+    intro_text = watermark_config.render_template("intro")
+    result.append(Scene(
+        scene_id=new_id,
+        text=intro_text,
+        image_prompt="",
+        is_watermark=True,
+        part_id=0,
+    ))
+    new_id += 1
+
+    # 2. Insert content scenes with periodic middle watermarks
+    since_last_wm = 0
+    for i, scene in enumerate(scenes):
+        # Check if we're at a part boundary
+        current_part = scene.part_id
+        next_part = scenes[i + 1].part_id if i + 1 < total_scenes else -1
+
+        # Update scene_id
+        scene.scene_id = new_id
+        result.append(scene)
+        new_id += 1
+        since_last_wm += 1
+        content_index += 1
+
+        # Insert part_end watermark at part boundaries
+        if next_part != -1 and next_part != current_part:
+            part_end_text = watermark_config.render_template("part_end")
+            result.append(Scene(
+                scene_id=new_id,
+                text=part_end_text,
+                image_prompt="",
+                is_watermark=True,
+                part_id=current_part,
+            ))
+            new_id += 1
+            since_last_wm = 0
+        # Insert middle watermark every N content scenes
+        elif since_last_wm >= interval:
+            middle_text = watermark_config.render_template("middle")
+            result.append(Scene(
+                scene_id=new_id,
+                text=middle_text,
+                image_prompt="",
+                is_watermark=True,
+                part_id=current_part,
+            ))
+            new_id += 1
+            since_last_wm = 0
+
+    # 4. Outro watermark
+    outro_text = watermark_config.render_template("outro")
+    last_part = scenes[-1].part_id if scenes else 0
+    result.append(Scene(
+        scene_id=new_id,
+        text=outro_text,
+        image_prompt="",
+        is_watermark=True,
+        part_id=last_part,
+    ))
+
+    wm_count = sum(1 for s in result if s.is_watermark)
+    logger.info(
+        f"Injected {wm_count} watermarks into {total_scenes} scenes "
+        f"(interval={interval}, parts={parts_per_video})"
+    )
+    return result
 
 
 def save_scenes(scenes: List[Scene], output_path: str):
@@ -267,12 +401,13 @@ def load_scenes(input_path: str) -> List[Scene]:
             scene_id=d["scene_id"],
             text=d["text"],
             image_prompt=d.get("image_prompt", ""),
-            video_prompt=d.get("video_prompt", ""),
             audio_path=d.get("audio_path"),
             image_path=d.get("image_path"),
             video_path=d.get("video_path"),
             audio_duration=d.get("audio_duration", 0.0),
             status=d.get("status", "pending"),
+            part_id=d.get("part_id", 0),
+            is_watermark=d.get("is_watermark", False),
         )
         scenes.append(scene)
     return scenes
