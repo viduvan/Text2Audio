@@ -220,8 +220,8 @@ def run_tts_only(text, engine_type, voice_or_id, rate, emotion):
         if engine_type == "vieneu":
             engine = create_tts_engine(
                 engine_type="vieneu",
-                emotion=emotion or "storytelling",
-                voice_id=voice_or_id if voice_or_id else None,
+                emotion=emotion or "natural",
+                voice_id=voice_or_id if voice_or_id else "Ngọc Lan",
                 rate=rate or "+0%",
             )
             ext = "wav"
@@ -273,8 +273,8 @@ def run_full_pipeline(
         config.tts.engine = tts_engine
         config.tts.rate = rate or "+0%"
         if tts_engine == "vieneu":
-            config.tts.vieneu_emotion = emotion or "storytelling"
-            config.tts.vieneu_voice_id = voice_or_id if voice_or_id else "Ly"
+            config.tts.vieneu_emotion = emotion or "natural"
+            config.tts.vieneu_voice_id = voice_or_id if voice_or_id else "Ngọc Lan"
         else:
             config.tts.voice = voice_or_id or "vi-VN-HoaiMyNeural"
 
@@ -389,7 +389,7 @@ def create_ui():
                             tts_engine_select = gr.Dropdown(
                                 label="🔊 Engine TTS",
                                 choices=[
-                                    ("🇻🇳 VieNeu-TTS (Local, 7+ giọng)", "vieneu"),
+                                    ("🇻🇳 VieNeu-TTS v3 Turbo (HF Hub, 10 giọng)", "vieneu"),
                                     ("☁️ Edge-TTS (Cloud, 2 giọng)", "edge-tts"),
                                 ],
                                 value="vieneu",
@@ -398,26 +398,29 @@ def create_ui():
 
                         with gr.Row():
                             voice_select = gr.Dropdown(
-                                label="🎙️ Giọng đọc",
+                                label="🎤 Giọng đọc",
                                 choices=[
-                                    ("🎤 Trúc Ly (nữ Bắc)", "Ly"),
-                                    ("🎤 Bích Ngọc (nữ Bắc)", "Ngoc"),
-                                    ("🎤 Thục Đoan (nữ Nam)", "Doan"),
-                                    ("🎤 Thanh Bình (nam Bắc)", "Binh"),
-                                    ("🎤 Phạm Tuyên (nam Bắc)", "Tuyen"),
-                                    ("🎤 Xuân Vĩnh (nam Nam)", "Vinh"),
-                                    ("🎤 Thái Sơn (nam Nam)", "Sơn"),
+                                    ("🎤 Ngọc Lan (Nữ, Nhẹ nhàng)", "Ngọc Lan"),
+                                    ("🎤 Ngọc Linh (Nữ, Trong sáng)", "Ngọc Linh"),
+                                    ("🎤 Trúc Ly (Nữ, Trẻ trung)", "Trúc Ly"),
+                                    ("🎤 Mỹ Duyên (Nữ, Mượt mà)", "Mỹ Duyên"),
+                                    ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                    ("🎤 Thái Sơn (Nam, Quyết đoán)", "Thái Sơn"),
+                                    ("🎤 Gia Bảo (Nam, Mượt mà)", "Gia Bảo"),
+                                    ("🎤 Đức Trí (Nam, Rõ ràng)", "Đức Trí"),
+                                    ("🎤 Trọng Hữu (Nam, Chính trực)", "Trọng Hữu"),
+                                    ("🎤 Bình An (Nam, Nhẹ nhàng)", "Bình An"),
                                 ],
-                                value="Ly",
+                                value="Ngọc Lan",
                                 scale=2,
                             )
                             emotion_select = gr.Dropdown(
                                 label="🎭 Phong cách đọc",
                                 choices=[
-                                    ("📖 Kể chuyện (Storytelling)", "storytelling"),
                                     ("💬 Tự nhiên (Natural)", "natural"),
+                                    ("📖 Kể chuyện (Storytelling)", "storytelling"),
                                 ],
-                                value="storytelling",
+                                value="natural",
                                 scale=2,
                             )
 
@@ -448,15 +451,18 @@ def create_ui():
                             if engine == "vieneu":
                                 return gr.update(
                                     choices=[
-                                        ("🎤 Trúc Ly (nữ Bắc)", "Ly"),
-                                        ("🎤 Bích Ngọc (nữ Bắc)", "Ngoc"),
-                                        ("🎤 Thục Đoan (nữ Nam)", "Doan"),
-                                        ("🎤 Thanh Bình (nam Bắc)", "Binh"),
-                                        ("🎤 Phạm Tuyên (nam Bắc)", "Tuyen"),
-                                        ("🎤 Xuân Vĩnh (nam Nam)", "Vinh"),
-                                        ("🎤 Thái Sơn (nam Nam)", "Sơn"),
+                                        ("🎤 Ngọc Lan (Nữ, Nhẹ nhàng)", "Ngọc Lan"),
+                                        ("🎤 Ngọc Linh (Nữ, Trong sáng)", "Ngọc Linh"),
+                                        ("🎤 Trúc Ly (Nữ, Trẻ trung)", "Trúc Ly"),
+                                        ("🎤 Mỹ Duyên (Nữ, Mượt mà)", "Mỹ Duyên"),
+                                        ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                        ("🎤 Thái Sơn (Nam, Quyết đoán)", "Thái Sơn"),
+                                        ("🎤 Gia Bảo (Nam, Mượt mà)", "Gia Bảo"),
+                                        ("🎤 Đức Trí (Nam, Rõ ràng)", "Đức Trí"),
+                                        ("🎤 Trọng Hữu (Nam, Chính trực)", "Trọng Hữu"),
+                                        ("🎤 Bình An (Nam, Nhẹ nhàng)", "Bình An"),
                                     ],
-                                    value="Ly",
+                                    value="Ngọc Lan",
                                 )
                             else:
                                 return gr.update(
@@ -538,7 +544,7 @@ def create_ui():
             # ═══════════════════════════════
             with gr.Tab("🔊 TTS", id="tts"):
                 gr.Markdown("### 🔊 Text-to-Speech (Chuyển văn bản → giọng nói)")
-                gr.Markdown("Tạo audio từ text tiếng Việt — hỗ trợ VieNeu-TTS (7+ giọng) và Edge-TTS")
+                gr.Markdown("Tạo audio từ text tiếng Việt — hỗ trợ VieNeu-TTS v3 Turbo (10 giọng, 48kHz) và Edge-TTS")
 
                 with gr.Row():
                     with gr.Column(scale=3):
@@ -557,26 +563,29 @@ def create_ui():
                                 value="vieneu",
                             )
                             tts_voice = gr.Dropdown(
-                                label="🎙️ Giọng đọc",
+                                label="🎤 Giọng đọc",
                                 choices=[
-                                    ("🎤 Trúc Ly (nữ Bắc)", "Ly"),
-                                    ("🎤 Bích Ngọc (nữ Bắc)", "Ngoc"),
-                                    ("🎤 Thục Đoan (nữ Nam)", "Doan"),
-                                    ("🎤 Thanh Bình (nam Bắc)", "Binh"),
-                                    ("🎤 Phạm Tuyên (nam Bắc)", "Tuyen"),
-                                    ("🎤 Xuân Vĩnh (nam Nam)", "Vinh"),
-                                    ("🎤 Thái Sơn (nam Nam)", "Sơn"),
+                                    ("🎤 Ngọc Lan (Nữ, Nhẹ nhàng)", "Ngọc Lan"),
+                                    ("🎤 Ngọc Linh (Nữ, Trong sáng)", "Ngọc Linh"),
+                                    ("🎤 Trúc Ly (Nữ, Trẻ trung)", "Trúc Ly"),
+                                    ("🎤 Mỹ Duyên (Nữ, Mượt mà)", "Mỹ Duyên"),
+                                    ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                    ("🎤 Thái Sơn (Nam, Quyết đoán)", "Thái Sơn"),
+                                    ("🎤 Gia Bảo (Nam, Mượt mà)", "Gia Bảo"),
+                                    ("🎤 Đức Trí (Nam, Rõ ràng)", "Đức Trí"),
+                                    ("🎤 Trọng Hữu (Nam, Chính trực)", "Trọng Hữu"),
+                                    ("🎤 Bình An (Nam, Nhẹ nhàng)", "Bình An"),
                                 ],
-                                value="Ly",
+                                value="Ngọc Lan",
                             )
                         with gr.Row():
                             tts_emotion = gr.Dropdown(
                                 label="🎭 Phong cách",
                                 choices=[
-                                    ("📖 Kể chuyện", "storytelling"),
                                     ("💬 Tự nhiên", "natural"),
+                                    ("📖 Kể chuyện", "storytelling"),
                                 ],
-                                value="storytelling",
+                                value="natural",
                             )
                             tts_rate = gr.Dropdown(
                                 label="⏩ Tốc độ",
@@ -593,15 +602,18 @@ def create_ui():
                             if engine == "vieneu":
                                 return gr.update(
                                     choices=[
-                                        ("🎤 Trúc Ly (nữ Bắc)", "Ly"),
-                                        ("🎤 Bích Ngọc (nữ Bắc)", "Ngoc"),
-                                        ("🎤 Thục Đoan (nữ Nam)", "Doan"),
-                                        ("🎤 Thanh Bình (nam Bắc)", "Binh"),
-                                        ("🎤 Phạm Tuyên (nam Bắc)", "Tuyen"),
-                                        ("🎤 Xuân Vĩnh (nam Nam)", "Vinh"),
-                                        ("🎤 Thái Sơn (nam Nam)", "Sơn"),
+                                        ("🎤 Ngọc Lan (Nữ, Nhẹ nhàng)", "Ngọc Lan"),
+                                        ("🎤 Ngọc Linh (Nữ, Trong sáng)", "Ngọc Linh"),
+                                        ("🎤 Trúc Ly (Nữ, Trẻ trung)", "Trúc Ly"),
+                                        ("🎤 Mỹ Duyên (Nữ, Mượt mà)", "Mỹ Duyên"),
+                                        ("🎤 Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                                        ("🎤 Thái Sơn (Nam, Quyết đoán)", "Thái Sơn"),
+                                        ("🎤 Gia Bảo (Nam, Mượt mà)", "Gia Bảo"),
+                                        ("🎤 Đức Trí (Nam, Rõ ràng)", "Đức Trí"),
+                                        ("🎤 Trọng Hữu (Nam, Chính trực)", "Trọng Hữu"),
+                                        ("🎤 Bình An (Nam, Nhẹ nhàng)", "Bình An"),
                                     ],
-                                    value="Ly",
+                                    value="Ngọc Lan",
                                 )
                             else:
                                 return gr.update(
