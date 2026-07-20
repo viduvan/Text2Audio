@@ -35,6 +35,7 @@ class StoryPipeline:
             if cfg.engine == "vieneu":
                 self.tts_engine = create_tts_engine(
                     engine_type="vieneu",
+                    model_id=cfg.vieneu_model_id,
                     mode=cfg.vieneu_mode,
                     emotion=cfg.vieneu_emotion,
                     voice_id=cfg.vieneu_voice_id,
