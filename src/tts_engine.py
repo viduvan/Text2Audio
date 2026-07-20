@@ -2,7 +2,7 @@
 
 Supports two engines:
 - edge-tts: Microsoft Edge cloud TTS (2 voices, free, needs internet)
-- vieneu: VieNeu-TTS local model (7+ voices, voice cloning, offline)
+- vieneu: VieNeu-TTS v3 Turbo from HuggingFace Hub (10 voices, voice cloning, offline after first download)
 """
 import os
 import asyncio
@@ -129,24 +129,26 @@ class VieNeuTTSEngine:
 
     def __init__(
         self,
-        mode: str = "standard",
-        emotion: str = "storytelling",
+        model_id: str = "pnnbao-ump/VieNeu-TTS-v3-Turbo",
+        mode: str = "turbo",
+        emotion: str = "natural",
         voice_id: Optional[str] = None,
         ref_audio: Optional[str] = None,
         ref_text: Optional[str] = None,
         **kwargs,
     ):
-        self.mode = mode          # "standard" or "turbo"
+        self.model_id = model_id  # HuggingFace Hub model ID
+        self.mode = mode          # "turbo" (v3 only supports turbo)
         self.emotion = emotion    # "natural" or "storytelling"
-        self.voice_id = voice_id  # Preset voice ID (e.g. "Ly", "Tuyen")
+        self.voice_id = voice_id  # Preset voice name (e.g. "Ngọc Lan", "Xuân Vĩnh")
         self.ref_audio = ref_audio  # Path to reference audio for cloning
-        self.ref_text = ref_text    # Reference text for cloning (standard mode)
+        self.ref_text = ref_text    # Reference text for cloning (unused in v3)
         self.rate = kwargs.get("rate", "+0%")
         self.tts = None
         self._voice_data = None
 
     def _init(self):
-        """Lazy-load VieNeu-TTS model."""
+        """Lazy-load VieNeu-TTS model from HuggingFace Hub."""
         if self.tts is not None:
             return
 
@@ -157,8 +159,8 @@ class VieNeuTTSEngine:
                 "VieNeu-TTS not installed. Install with: pip install vieneu"
             )
 
-        logger.info(f"Loading VieNeu-TTS (mode={self.mode}, emotion={self.emotion})")
-        self.tts = Vieneu(mode=self.mode, emotion=self.emotion)
+        logger.info(f"Loading VieNeu-TTS v3 Turbo from HF Hub: {self.model_id}")
+        self.tts = Vieneu(model_id=self.model_id)
 
         # Pre-load voice data
         if self.ref_audio and os.path.exists(self.ref_audio):
@@ -167,12 +169,12 @@ class VieNeuTTSEngine:
         elif self.voice_id:
             logger.info(f"Using preset voice: {self.voice_id}")
             try:
-                self._voice_data = self.tts.get_preset_voice(self.voice_id)
+                self._voice_data = self.voice_id  # v3: pass name string directly
             except Exception as e:
-                logger.warning(f"Could not load preset voice '{self.voice_id}': {e}")
+                logger.warning(f"Could not set preset voice '{self.voice_id}': {e}")
                 self._voice_data = None
 
-        logger.info("VieNeu-TTS loaded successfully")
+        logger.info("VieNeu-TTS v3 Turbo loaded successfully")
 
     def list_voices(self) -> List[Tuple[str, str]]:
         """List available preset voices.
@@ -181,18 +183,29 @@ class VieNeuTTSEngine:
             List of (description, voice_id) tuples.
         """
         self._init()
-        return self.tts.list_preset_voices()
+        try:
+            return self.tts.list_preset_voices()
+        except Exception:
+            # Fallback: return known v3 Turbo voices
+            return [
+                ("Ngọc Lan (Nữ, Nhẹ nhàng)", "Ngọc Lan"),
+                ("Ngọc Linh (Nữ, Trong sáng)", "Ngọc Linh"),
+                ("Trúc Ly (Nữ, Trẻ trung)", "Trúc Ly"),
+                ("Mỹ Duyên (Nữ, Mượt mà)", "Mỹ Duyên"),
+                ("Xuân Vĩnh (Nam, Năng động)", "Xuân Vĩnh"),
+                ("Thái Sơn (Nam, Quyết đoán)", "Thái Sơn"),
+                ("Gia Bảo (Nam, Mượt mà)", "Gia Bảo"),
+                ("Đức Trí (Nam, Rõ ràng)", "Đức Trí"),
+                ("Trọng Hữu (Nam, Chính trực)", "Trọng Hữu"),
+                ("Bình An (Nam, Nhẹ nhàng)", "Bình An"),
+            ]
 
     def set_voice(self, voice_id: str):
         """Change the active preset voice."""
         self._init()
         self.voice_id = voice_id
-        try:
-            self._voice_data = self.tts.get_preset_voice(voice_id)
-            logger.info(f"Switched to voice: {voice_id}")
-        except Exception as e:
-            logger.warning(f"Could not load voice '{voice_id}': {e}")
-            self._voice_data = None
+        self._voice_data = voice_id  # v3: name passed directly to infer()
+        logger.info(f"Switched to voice: {voice_id}")
 
     def set_ref_audio(self, ref_audio_path: str, ref_text: Optional[str] = None):
         """Set reference audio for voice cloning."""
@@ -209,11 +222,11 @@ class VieNeuTTSEngine:
         output_path: str,
         collect_timestamps: bool = False,
     ) -> Tuple[str, List[WordTimestamp]]:
-        """Generate audio from text.
+        """Generate audio from text using VieNeu-TTS v3 Turbo.
 
         Args:
             text: Vietnamese text to synthesize
-            output_path: Path to save audio file (.wav)
+            output_path: Path to save audio file (.wav, 48kHz)
             collect_timestamps: Not supported yet (ignored)
 
         Returns:
@@ -232,8 +245,9 @@ class VieNeuTTSEngine:
         else:
             wav_path = output_path
 
-        # Generate audio
-        audio = self.tts.infer(text=text, voice=self._voice_data)
+        # Generate audio — v3 API: voice is passed as a string name
+        voice_arg = self._voice_data if self._voice_data else "Ngọc Lan"
+        audio = self.tts.infer(text=text, voice=voice_arg)
 
         # Apply speed adjustment if needed
         if self.rate and self.rate != "+0%":
@@ -255,7 +269,7 @@ class VieNeuTTSEngine:
 
         self.tts.save(audio, wav_path)
 
-        logger.info(f"VieNeu audio saved: {wav_path}")
+        logger.info(f"VieNeu-TTS v3 audio saved (48kHz): {wav_path}")
         return wav_path, []
 
     def get_audio_duration(self, audio_path: str) -> float:
@@ -275,7 +289,7 @@ class VieNeuTTSEngine:
             return duration
         except Exception:
             size = os.path.getsize(audio_path)
-            return size / 48000  # WAV 24kHz mono 16-bit ≈ 48KB/s
+            return size / 96000  # WAV 48kHz mono 16-bit ≈ 96KB/s
 
 
 # ─────────────────────────────────────────────
@@ -286,7 +300,7 @@ def create_tts_engine(engine_type: str = "vieneu", **kwargs):
     """Factory function to create TTS engine.
 
     Args:
-        engine_type: "vieneu" (default, local) or "edge-tts" (cloud)
+        engine_type: "vieneu" (default, HF Hub) or "edge-tts" (cloud)
         **kwargs: Engine-specific parameters
 
     Returns:
@@ -307,9 +321,9 @@ def list_available_engines() -> List[dict]:
     engines = [
         {
             "id": "vieneu",
-            "name": "🇻🇳 VieNeu-TTS (Local)",
-            "description": "7+ giọng Việt, clone giọng nói, chạy offline",
-            "voices": "Thanh Bình, Phạm Tuyên, Xuân Vĩnh, Thục Đoan, Trúc Ly, Thái Sơn, Bích Ngọc",
+            "name": "🇻🇳 VieNeu-TTS v3 Turbo (HuggingFace Hub)",
+            "description": "10 giọng Việt 48kHz, clone giọng nói, tải tự động từ HF Hub",
+            "voices": "Ngọc Lan, Ngọc Linh, Trúc Ly, Mỹ Duyên, Xuân Vĩnh, Thái Sơn, Gia Bảo, Đức Trí, Trọng Hữu, Bình An",
         },
         {
             "id": "edge-tts",
